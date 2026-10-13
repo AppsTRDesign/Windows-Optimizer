@@ -1,19 +1,1 @@
-{
-  "author": {
-    "name": "AppsTRDesign",
-    "github": "https://github.com/AppsTRDesign",
-    "instagram": "https://instagram.com/oztasonur1",
-    "website": "https://worldofwar.site",
-    "logo": "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/refs/heads/main/assets/logo.png"
-  },
-  "modules": {
-    "adsBlocker": true,
-    "featureManager": true,
-    "ramCleaner": true,
-    "backgroundManager": true
-  },
-  "settings": {
-    "runOnStartup": false,
-    "autoUpdate": true
-  }
-}
+{  "author": "AppsTRDesign",  "github": "https://github.com/AppsTRDesign",  "instagram": "https://instagram.com/oztasonur1",  "website": "https://worldofwar.site",  "logo": "logo.png",  "version": "1.0.0"}

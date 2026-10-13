@@ -1,37 +1,67 @@
-# modules/AdsBlocker.ps1
-# Windows 10/11 Reklam Engelleyici Modülü
-# Kayıt defteri anahtarlarını değiştirerek sistem genelindeki reklamları devre dışı bırakır.
+# Reklam engelleyici fonksiyonlar
 
-function Disable-WindowsAds {
-    Write-Host "Reklamlar devre dışı bırakılıyor..." -ForegroundColor Cyan
-
-    # 1. Başlat Menüsü'ndeki önerilen uygulamaları kapat
-    $startMenuPath = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
-    Set-ItemProperty -Path $startMenuPath -Name "SubscribedContent-338388Enabled" -Value 0 -Type DWord -Force
-    Set-ItemProperty -Path $startMenuPath -Name "SubscribedContent-338389Enabled" -Value 0 -Type DWord -Force
-    Set-ItemProperty -Path $startMenuPath -Name "SystemPaneSuggestionsEnabled" -Value 0 -Type DWord -Force
-
-    # 2. Dosya Gezgini'ndeki OneDrive reklamını kapat
-    $explorerPath = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    Set-ItemProperty -Path $explorerPath -Name "ShowSyncProviderNotifications" -Value 0 -Type DWord -Force
-
-    # 3. Kilit ekranındaki reklamları ve ipuçlarını kapat
-    $lockScreenPath = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
-    Set-ItemProperty -Path $lockScreenPath -Name "RotatingLockScreenOverlayEnabled" -Value 0 -Type DWord -Force
-    Set-ItemProperty -Path $lockScreenPath -Name "SubscribedContent-338387Enabled" -Value 0 -Type DWord -Force
-
-    # 4. Bildirim merkezindeki önerileri kapat
-    $notifPath = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.ActionCenter.SmartOptOut"
-    if (-not (Test-Path $notifPath)) { New-Item -Path $notifPath -Force | Out-Null }
-    Set-ItemProperty -Path $notifPath -Name "Enabled" -Value 0 -Type DWord -Force
-
-    # 5. Reklam kimliğini devre dışı bırak (sistem geneli)
-    $adIdPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo"
-    if (-not (Test-Path $adIdPath)) { New-Item -Path $adIdPath -Force | Out-Null }
-    Set-ItemProperty -Path $adIdPath -Name "Enabled" -Value 0 -Type DWord -Force
-
-    Write-Host "Reklamlar başarıyla devre dışı bırakıldı." -ForegroundColor Green
+function Set-Reg {
+    param([string]$Path,[string]$Name,[int]$Value=0)
+    if (-not (Test-Path $Path)) { New-Item -Path $Path -Force | Out-Null }
+    Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type DWord -Force
 }
 
-# Modülü çalıştır
-Disable-WindowsAds
+function Disable-ExplorerAds {
+    Set-Reg "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" "ShowSyncProviderNotifications" 0
+}
+function Disable-LockScreenAds {
+    $p = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
+    Set-Reg $p "RotatingLockScreenOverlayEnabled" 0
+    Set-Reg $p "SubscribedContent-338387Enabled" 0
+}
+function Disable-SettingsAds {
+    $p = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
+    Set-Reg $p "SubscribedContent-338393Enabled" 0
+    Set-Reg $p "SubscribedContent-353694Enabled" 0
+    Set-Reg $p "SubscribedContent-353696Enabled" 0
+}
+function Disable-GeneralTips {
+    $p = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
+    Set-Reg $p "SoftLandingEnabled" 0
+    Set-Reg $p "SubscribedContent-310093Enabled" 0
+}
+function Disable-FinishSetupAds {
+    Set-Reg "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\UserProfileEngagement" "ScoobeSystemSettingEnabled" 0
+}
+function Disable-WelcomeExperience {
+    $p = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
+    Set-Reg $p "SubscribedContent-338388Enabled" 0
+    Set-Reg $p "SubscribedContent-338389Enabled" 0
+}
+function Disable-PersonalizedAds {
+    Set-Reg "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" "Enabled" 0
+    # HKLM - admin gerektirir, GUI zaten admin çalışıyor
+    Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" "Enabled" 0
+    Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo" "DisabledByGroupPolicy" 1
+}
+function Disable-TailoredExperiences {
+    Set-Reg "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy" "TailoredExperiencesWithDiagnosticDataEnabled" 0
+}
+function Disable-StartMenuAds {
+    $p = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
+    Set-Reg $p "SubscribedContent-338388Enabled" 0
+    Set-Reg $p "SystemPaneSuggestionsEnabled" 0
+    Set-Reg $p "SilentInstalledAppsEnabled" 0
+}
+function Disable-NotificationSuggestions {
+    $p = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
+    Set-Reg $p "SubscribedContent-338389Enabled" 0
+    Set-Reg $p "SubscribedContent-314563Enabled" 0
+    Set-Reg $p "SubscribedContent-88000326Enabled" 0
+}
+function Disable-BingSearch {
+    $p = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search"
+    Set-Reg $p "BingSearchEnabled" 0
+    Set-Reg $p "CortanaConsent" 0
+    Set-Reg "HKCU:\SOFTWARE\Policies\Microsoft\Windows\Explorer" "DisableSearchBoxSuggestions" 1
+}
+function Disable-EdgeSearchBar {
+    $p = "HKCU:\SOFTWARE\Policies\Microsoft\Edge"
+    Set-Reg $p "WebWidgetAllowed" 0
+    Set-Reg $p "SearchbarAllowed" 0
+}
