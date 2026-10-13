@@ -9,11 +9,11 @@ New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 $files = @(
   "WindowsOptimizer.ps1",
   "config.json",
-  "icon.png",
-  "Modules\AdsBlocker.ps1",
-  "Modules\FeatureManager.ps1",
-  "Modules\RamCleaner.ps1",
-  "Modules\BackgroundManager.ps1"
+  "assets\logo.png",
+  "modules\AdsBlocker.ps1",
+  "modules\FeatureManager.ps1",
+  "modules\RamCleaner.ps1",
+  "modules\BackgroundManager.ps1"
 )
 foreach ($f in $files) {
     $dest = Join-Path $installDir $f
@@ -24,9 +24,9 @@ foreach ($f in $files) {
     } catch { Write-Host "  ✗ $f  ($($_.Exception.Message))" -ForegroundColor Red }
 }
 
-# 2) icon.png -> icon.ico dönüşümü
-$png = Join-Path $installDir "icon.png"
-$ico = Join-Path $installDir "icon.ico"
+# 2) icon.png -> logo.ico dönüşümü
+$png = Join-Path $installDir "logo.png"
+$ico = Join-Path $installDir "logo.ico"
 if (Test-Path $png) {
     try {
         Add-Type -AssemblyName System.Drawing
@@ -37,8 +37,8 @@ if (Test-Path $png) {
         $fs   = [System.IO.File]::Create($ico)
         $icon.Save($fs); $fs.Close()
         $src.Dispose(); $bmp.Dispose()
-        Write-Host "  ✓ icon.ico oluşturuldu" -ForegroundColor Gray
-    } catch { Write-Host "  ! icon.ico oluşturulamadı: $($_.Exception.Message)" -ForegroundColor Yellow }
+        Write-Host "  ✓ logo.ico oluşturuldu" -ForegroundColor Gray
+    } catch { Write-Host "  ! logo.ico oluşturulamadı: $($_.Exception.Message)" -ForegroundColor Yellow }
 }
 
 # 3) Execution Policy (kullanıcı seviyesi)
