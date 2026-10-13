@@ -15,4 +15,4 @@ A modular, open-source optimization tool for Windows 10/11. Disable ads, manage 
 
 Open PowerShell as Administrator and run:
 ```powershell
-irm https://raw.githubusercontent.com/YOUR_USERNAME/Windows-Optimizer/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1 | iex
