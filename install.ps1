@@ -12,7 +12,7 @@ if (-not (Test-Path $installDir)) {
 }
 
 # 2. Modülleri ve config dosyasını indir
-$baseUrl = "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/tree/main"
+$baseUrl = "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main"
 $files = @(
     "modules/AdsBlocker.ps1",
     "modules/FeatureManager.ps1",
