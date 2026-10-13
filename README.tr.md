@@ -15,4 +15,4 @@ Windows 10/11 için modüler, açık kaynak bir optimizasyon aracı. Reklamları
 
 PowerShell'i Yönetici olarak açın ve şu komutu çalıştırın:
 ```powershell
-irm https://raw.githubusercontent.com/KULLANICI_ADINIZ/Windows-Optimizer/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1 | iex
