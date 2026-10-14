@@ -1,5 +1,5 @@
-# WindowsOptimizer.ps1 - v1.3
-# Özellikler: Revert + TR/EN + RAM/BG self-contained + Auto-update
+# WindowsOptimizer.ps1 - v1.4
+# Değişiklikler: Geri Al kaldırıldı, version.json tek kaynak, güvenli update
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -12,128 +12,109 @@ if (-not $isAdmin) {
     exit
 }
 
-$logPath    = "$env:TEMP\WindowsOptimizer-error.log"
-$backupPath = Join-Path $PSScriptRoot "backup.json"
+$logPath      = "$env:TEMP\WindowsOptimizer-error.log"
 $settingsPath = Join-Path $PSScriptRoot "settings.json"
+$localVerPath = Join-Path $PSScriptRoot "version.json"
+$remoteVerUrl = "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/version.json"
+$installerUrl = "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1"
+
+# ---------- YEREL SÜRÜM ----------
+$localVersion = "1.0.0"
+if (Test-Path $localVerPath) {
+    try { $localVersion = (Get-Content $localVerPath -Raw -Encoding UTF8 | ConvertFrom-Json).version } catch {}
+}
 
 # ---------- DİL SÖZLÜĞÜ ----------
 $Lang = @{
     TR = @{
-        Subtitle        = "v1.3  -  Modüler Windows 10/11 Tweaker"
-        SecAds          = "REKLAMLAR & GİZLİLİK"
-        SecSearch       = "ARAMA & WEB"
-        SecSystem       = "SİSTEM"
-        SecPerf         = "PERFORMANS"
-        SecBg           = "ARKA PLAN"
-        ChkExplorerAds  = "Dosya Gezgini reklamlarını kapat"
-        ChkLockScreen   = "Kilit ekranı ipuçları ve reklamlarını kapat"
-        ChkSettingsAds  = "Ayarlar uygulaması reklamlarını kapat"
-        ChkGeneralTips  = "Genel ipuçları ve önerileri kapat"
-        ChkFinishSetup  = "'Kurulumu tamamla' reklamlarını kapat"
-        ChkWelcome      = "'Hoş geldiniz' deneyimi reklamlarını kapat"
-        ChkPersonalAds  = "Kişiselleştirilmiş reklamları kapat"
-        ChkTailored     = "'Uyarlanmış deneyimleri' kapat"
-        ChkStartMenuAds = "Başlat menüsü reklamlarını kapat"
-        ChkNotifSugg    = "Bildirim önerilerini kapat"
-        ChkBing         = "Aramada Bing sonuçlarını kapat"
-        ChkEdgeBar      = "Edge arama çubuğu widget'ını kapat"
-        ChkTelemetry    = "Telemetri ve veri toplamayı kapat"
-        ChkCortana      = "Cortana'yı devre dışı bırak"
-        ChkConsumer     = "Tüketici özelliklerini kapat"
-        ChkBgApps       = "Arka plan uygulamalarını kapat"
-        ChkBgServices   = "Gereksiz arka plan servislerini kapat"
-        ChkBgCortana    = "Cortana arka plan görevini kapat"
-        ChkRam          = "RAM bekleme belleğini temizle"
-        ChkRamTrim      = "Çalışan süreçlerin bellek izini kırp"
-        BtnApply        = "UYGULA"
-        BtnRevert       = "GERİ AL"
-        BtnUpdate       = "GÜNCELLE"
-        StatusReady     = "Hazır - Değişiklikleri uygulamak için seçin"
-        StatusApplying  = "Uygulanıyor..."
-        StatusReverting = "Geri alınıyor..."
-        StatusOK        = "✓ {0} değişiklik uygulandı"
-        StatusWarn      = "⚠ {0} başarılı, {1} hata (konsola bakın)"
-        StatusReverted  = "✓ {0} değişiklik geri alındı"
-        StatusNoBackup  = "Geri alınacak kayıt yok"
-        UpdateFound     = "🎉 Yeni sürüm: v{0} - Güncellemek için tıklayın"
-        UpdateNone      = "✓ Güncel sürüm: v{0}"
-        LangBtn         = "EN"
+        Subtitle       = "v{0}  -  Modüler Windows 10/11 Tweaker"
+        SecAds         = "REKLAMLAR & GİZLİLİK"
+        SecSearch      = "ARAMA & WEB"
+        SecSystem      = "SİSTEM"
+        SecBg          = "ARKA PLAN"
+        SecPerf        = "PERFORMANS"
+        ChkExplorerAds = "Dosya Gezgini reklamlarını kapat"
+        ChkLockScreen  = "Kilit ekranı ipuçları ve reklamlarını kapat"
+        ChkSettingsAds = "Ayarlar uygulaması reklamlarını kapat"
+        ChkGeneralTips = "Genel ipuçları ve önerileri kapat"
+        ChkFinishSetup = "'Kurulumu tamamla' reklamlarını kapat"
+        ChkWelcome     = "'Hoş geldiniz' deneyimi reklamlarını kapat"
+        ChkPersonalAds = "Kişiselleştirilmiş reklamları kapat"
+        ChkTailored    = "'Uyarlanmış deneyimleri' kapat"
+        ChkStartMenuAds= "Başlat menüsü reklamlarını kapat"
+        ChkNotifSugg   = "Bildirim önerilerini kapat"
+        ChkBing        = "Aramada Bing sonuçlarını kapat"
+        ChkEdgeBar     = "Edge arama çubuğu widget'ını kapat"
+        ChkTelemetry   = "Telemetri ve veri toplamayı kapat"
+        ChkCortana     = "Cortana'yı devre dışı bırak"
+        ChkConsumer    = "Tüketici özelliklerini kapat"
+        ChkBgApps      = "Arka plan uygulamalarını kapat"
+        ChkBgServices  = "Gereksiz arka plan servislerini kapat"
+        ChkBgCortana   = "Cortana arka plan görevini kapat"
+        ChkRam         = "RAM bekleme belleğini temizle"
+        ChkRamTrim     = "Çalışan süreçlerin bellek izini kırp"
+        BtnApply       = "UYGULA"
+        BtnUpdate      = "GÜNCELLE"
+        StatusReady    = "Hazır - Değişiklikleri uygulamak için seçin"
+        StatusApplying = "Uygulanıyor..."
+        StatusOK       = "✓ {0} değişiklik uygulandı"
+        StatusWarn     = "⚠ {0} başarılı, {1} hata (konsola bakın)"
+        UpdateFound    = "🎉 Yeni sürüm: v{0} - Güncellemek için tıklayın"
+        UpdateNone     = "✓ Güncel sürüm: v{0}"
+        LangBtn        = "EN"
     }
     EN = @{
-        Subtitle        = "v1.3  -  Modular Windows 10/11 Tweaker"
-        SecAds          = "ADS & PRIVACY"
-        SecSearch       = "SEARCH & WEB"
-        SecSystem       = "SYSTEM"
-        SecPerf         = "PERFORMANCE"
-        SecBg           = "BACKGROUND"
-        ChkExplorerAds  = "Disable File Explorer ads"
-        ChkLockScreen   = "Disable lock screen tips & ads"
-        ChkSettingsAds  = "Disable Settings app ads"
-        ChkGeneralTips  = "Disable general tips & suggestions"
-        ChkFinishSetup  = "Disable 'Finish Setup' ads"
-        ChkWelcome      = "Disable 'Welcome Experience' ads"
-        ChkPersonalAds  = "Disable personalized ads"
-        ChkTailored     = "Disable 'Tailored Experiences'"
-        ChkStartMenuAds = "Disable Start Menu ads"
-        ChkNotifSugg    = "Disable notification suggestions"
-        ChkBing         = "Disable Bing results in search"
-        ChkEdgeBar      = "Disable Edge search bar widget"
-        ChkTelemetry    = "Disable telemetry & data collection"
-        ChkCortana      = "Disable Cortana"
-        ChkConsumer     = "Disable consumer features"
-        ChkBgApps       = "Disable background apps"
-        ChkBgServices   = "Disable unnecessary background services"
-        ChkBgCortana    = "Disable Cortana background task"
-        ChkRam          = "Clean RAM standby memory"
-        ChkRamTrim      = "Trim running process working sets"
-        BtnApply        = "APPLY"
-        BtnRevert       = "REVERT"
-        BtnUpdate       = "UPDATE"
-        StatusReady     = "Ready - Select tweaks and click apply"
-        StatusApplying  = "Applying..."
-        StatusReverting = "Reverting..."
-        StatusOK        = "✓ {0} changes applied"
-        StatusWarn      = "⚠ {0} ok, {1} failed (see console)"
-        StatusReverted  = "✓ {0} changes reverted"
-        StatusNoBackup  = "Nothing to revert"
-        UpdateFound     = "🎉 New version: v{0} - Click to update"
-        UpdateNone      = "✓ Up to date: v{0}"
-        LangBtn         = "TR"
+        Subtitle       = "v{0}  -  Modular Windows 10/11 Tweaker"
+        SecAds         = "ADS & PRIVACY"
+        SecSearch      = "SEARCH & WEB"
+        SecSystem      = "SYSTEM"
+        SecBg          = "BACKGROUND"
+        SecPerf        = "PERFORMANCE"
+        ChkExplorerAds = "Disable File Explorer ads"
+        ChkLockScreen  = "Disable lock screen tips & ads"
+        ChkSettingsAds = "Disable Settings app ads"
+        ChkGeneralTips = "Disable general tips & suggestions"
+        ChkFinishSetup = "Disable 'Finish Setup' ads"
+        ChkWelcome     = "Disable 'Welcome Experience' ads"
+        ChkPersonalAds = "Disable personalized ads"
+        ChkTailored    = "Disable 'Tailored Experiences'"
+        ChkStartMenuAds= "Disable Start Menu ads"
+        ChkNotifSugg   = "Disable notification suggestions"
+        ChkBing        = "Disable Bing results in search"
+        ChkEdgeBar     = "Disable Edge search bar widget"
+        ChkTelemetry   = "Disable telemetry & data collection"
+        ChkCortana     = "Disable Cortana"
+        ChkConsumer    = "Disable consumer features"
+        ChkBgApps      = "Disable background apps"
+        ChkBgServices  = "Disable unnecessary background services"
+        ChkBgCortana   = "Disable Cortana background task"
+        ChkRam         = "Clean RAM standby memory"
+        ChkRamTrim     = "Trim running process working sets"
+        BtnApply       = "APPLY"
+        BtnUpdate      = "UPDATE"
+        StatusReady    = "Ready - Select tweaks and click apply"
+        StatusApplying = "Applying..."
+        StatusOK       = "✓ {0} changes applied"
+        StatusWarn     = "⚠ {0} ok, {1} failed (see console)"
+        UpdateFound    = "🎉 New version: v{0} - Click to update"
+        UpdateNone     = "✓ Up to date: v{0}"
+        LangBtn        = "TR"
     }
 }
 
 # ---------- AYARLARI OKU ----------
 function Load-Settings {
     if (Test-Path $settingsPath) {
-        try { return Get-Content $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json }
-        catch {}
+        try { return Get-Content $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json } catch {}
     }
     return [PSCustomObject]@{ language = "TR" }
 }
-function Save-Settings($s) {
-    $s | ConvertTo-Json | Set-Content $settingsPath -Encoding UTF8
-}
+function Save-Settings($s) { $s | ConvertTo-Json | Set-Content $settingsPath -Encoding UTF8 }
 
 $settings = Load-Settings
 if (-not $settings.language) { $settings.language = "TR" }
 
-# ---------- BACKUP ----------
-function Load-Backup {
-    $hash = @{}
-    if (Test-Path $backupPath) {
-        try {
-            $json = Get-Content $backupPath -Raw -Encoding UTF8 | ConvertFrom-Json
-            foreach ($p in $json.PSObject.Properties) { $hash[$p.Name] = $p.Value }
-        } catch {}
-    }
-    return $hash
-}
-function Save-Backup($hash) {
-    $hash | ConvertTo-Json -Depth 6 | Set-Content $backupPath -Encoding UTF8
-}
-
-# ---------- AKSİYON TANIMLARI ----------
-# Her aksiyon: { "ChkXxx" = @( @{Path="..."; Name="..."; Value=0}, ... ) }
+# ---------- REGISTRY AKSİYONLARI ----------
 $ActionDefs = [ordered]@{
     ChkExplorerAds = @(
         @{ Path="HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name="ShowSyncProviderNotifications"; Value=0 }
@@ -204,47 +185,15 @@ $ActionDefs = [ordered]@{
     )
 }
 
-# ---------- APPLY / REVERT FONKSİYONLARI ----------
 function Apply-RegistryList {
-    param($List, [hashtable]$Backup)
+    param($List)
     foreach ($r in $List) {
-        $key = "$($r.Path)|$($r.Name)"
-        if (-not $Backup.ContainsKey($key)) {
-            $orig = $null; $existed = $false
-            if (Test-Path $r.Path) {
-                try {
-                    $prop = Get-ItemProperty -Path $r.Path -Name $r.Name -ErrorAction Stop
-                    $orig = $prop.($r.Name); $existed = $true
-                } catch { $existed = $false }
-            }
-            $Backup[$key] = @{ Path=$r.Path; Name=$r.Name; Value=$orig; Existed=$existed }
-        }
         if (-not (Test-Path $r.Path)) { New-Item -Path $r.Path -Force | Out-Null }
         Set-ItemProperty -Path $r.Path -Name $r.Name -Value $r.Value -Type DWord -Force
     }
 }
 
-function Restore-RegistryList {
-    param($List, [hashtable]$Backup)
-    $count = 0
-    foreach ($r in $List) {
-        $key = "$($r.Path)|$($r.Name)"
-        if ($Backup.ContainsKey($key)) {
-            $b = $Backup[$key]
-            try {
-                if ($b.Existed) {
-                    Set-ItemProperty -Path $b.Path -Name $b.Name -Value $b.Value -Type DWord -Force -ErrorAction Stop
-                } else {
-                    Remove-ItemProperty -Path $b.Path -Name $b.Name -ErrorAction SilentlyContinue
-                }
-                $count++
-            } catch {}
-        }
-    }
-    return $count
-}
-
-# ---------- MODÜLLERİ YÜKLE ----------
+# ---------- GUI ----------
 try {
     Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
     Set-Location $PSScriptRoot
@@ -253,9 +202,8 @@ try {
     if (Test-Path $configPath) {
         $config = Get-Content $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
     } else {
-        $config = [PSCustomObject]@{ author="Anonim"; github="#"; instagram="#"; website="#"; logo="assets/logo.png"; version="1.3.0" }
+        $config = [PSCustomObject]@{ author="Anonim"; github="#"; instagram="#"; website="#"; logo="assets/logo.png" }
     }
-    if (-not $config.version) { $config.version = "1.3.0" }
 
     . "$PSScriptRoot\modules\RamCleaner.ps1"
     . "$PSScriptRoot\modules\BackgroundManager.ps1"
@@ -263,7 +211,6 @@ try {
     $logoPath   = Join-Path $PSScriptRoot ($config.logo -replace '/','\')
     $bannerPath = Join-Path $PSScriptRoot "assets\banner.png"
 
-    # ---------- XAML ----------
     $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -271,7 +218,6 @@ try {
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" AllowsTransparency="True"
         Background="Transparent" ResizeMode="CanResizeWithGrip">
-
   <Window.Resources>
     <Style x:Key="ModernCheck" TargetType="CheckBox">
       <Setter Property="Foreground" Value="#E6E6F0"/>
@@ -305,16 +251,11 @@ try {
         </Setter.Value>
       </Setter>
     </Style>
-
     <Style x:Key="TitleBtn" TargetType="Button">
-      <Setter Property="Width" Value="34"/>
-      <Setter Property="Height" Value="34"/>
-      <Setter Property="Foreground" Value="#C0C0D0"/>
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="FontSize" Value="13"/>
-      <Setter Property="FontWeight" Value="Bold"/>
-      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Width" Value="34"/><Setter Property="Height" Value="34"/>
+      <Setter Property="Foreground" Value="#C0C0D0"/><Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/><Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontWeight" Value="Bold"/><Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
@@ -330,12 +271,9 @@ try {
         </Setter.Value>
       </Setter>
     </Style>
-
     <Style x:Key="PrimaryBtn" TargetType="Button">
-      <Setter Property="Foreground" Value="White"/>
-      <Setter Property="FontSize" Value="13"/>
-      <Setter Property="FontWeight" Value="Bold"/>
-      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Foreground" Value="White"/><Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontWeight" Value="Bold"/><Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
@@ -356,39 +294,31 @@ try {
         </Setter.Value>
       </Setter>
     </Style>
-
-    <Style x:Key="DangerBtn" TargetType="Button">
-      <Setter Property="Foreground" Value="White"/>
-      <Setter Property="FontSize" Value="13"/>
-      <Setter Property="FontWeight" Value="Bold"/>
-      <Setter Property="Cursor" Value="Hand"/>
+    <Style x:Key="UpdateBtn" TargetType="Button">
+      <Setter Property="Foreground" Value="#FFD166"/><Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontWeight" Value="Bold"/><Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" CornerRadius="8" Background="#3A1E1E" BorderBrush="#7C3A3A" BorderThickness="1">
+            <Border x:Name="Bd" CornerRadius="8" Background="#3A2E10" BorderBrush="#7C5C2A" BorderThickness="1">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#4A2525"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#4A3A18"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
       </Setter>
     </Style>
-
     <Style x:Key="LinkBtn" TargetType="Button">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="Foreground" Value="#9C8CFF"/>
-      <Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="Cursor" Value="Hand"/>
-      <Setter Property="FontSize" Value="11"/>
-      <Setter Property="Padding" Value="0"/>
+      <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#9C8CFF"/>
+      <Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="FontSize" Value="11"/><Setter Property="Padding" Value="0"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
             <TextBlock x:Name="Txt" Text="{TemplateBinding Content}"
-                       Foreground="{TemplateBinding Foreground}"
-                       TextDecorations="Underline"/>
+                       Foreground="{TemplateBinding Foreground}" TextDecorations="Underline"/>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
                 <Setter TargetName="Txt" Property="Foreground" Value="#C4B5FD"/>
@@ -399,7 +329,6 @@ try {
       </Setter>
     </Style>
   </Window.Resources>
-
   <Border CornerRadius="14" BorderBrush="#2A2A45" BorderThickness="1">
     <Border.Background>
       <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -407,19 +336,14 @@ try {
         <GradientStop Color="#141428" Offset="1"/>
       </LinearGradientBrush>
     </Border.Background>
-
     <Grid>
       <Grid.RowDefinitions>
-        <RowDefinition Height="Auto"/>
-        <RowDefinition Height="78"/>
-        <RowDefinition Height="*"/>
-        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/><RowDefinition Height="78"/>
+        <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
-
       <Border Grid.Row="0" x:Name="BannerBox" CornerRadius="14,14,0,0" ClipToBounds="True">
         <Image x:Name="BannerImg" Stretch="UniformToFill"/>
       </Border>
-
       <Border Grid.Row="1" x:Name="HeaderBar">
         <Border.Background>
           <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -444,10 +368,8 @@ try {
           </StackPanel>
         </Grid>
       </Border>
-
       <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,6,0,6">
         <StackPanel Margin="26,8,26,8">
-
           <TextBlock x:Name="LblSecAds" Foreground="#7C5CFF" FontSize="11" FontWeight="Bold" Margin="0,10,0,8"/>
           <CheckBox x:Name="ChkExplorerAds" Style="{StaticResource ModernCheck}" IsChecked="True"/>
           <CheckBox x:Name="ChkLockScreen"  Style="{StaticResource ModernCheck}" IsChecked="True"/>
@@ -459,41 +381,32 @@ try {
           <CheckBox x:Name="ChkTailored"    Style="{StaticResource ModernCheck}" IsChecked="True"/>
           <CheckBox x:Name="ChkStartMenuAds" Style="{StaticResource ModernCheck}" IsChecked="True"/>
           <CheckBox x:Name="ChkNotifSugg"   Style="{StaticResource ModernCheck}" IsChecked="True"/>
-
           <TextBlock x:Name="LblSecSearch" Foreground="#7C5CFF" FontSize="11" FontWeight="Bold" Margin="0,18,0,8"/>
           <CheckBox x:Name="ChkBing"    Style="{StaticResource ModernCheck}" IsChecked="True"/>
           <CheckBox x:Name="ChkEdgeBar" Style="{StaticResource ModernCheck}" IsChecked="True"/>
-
           <TextBlock x:Name="LblSecSystem" Foreground="#7C5CFF" FontSize="11" FontWeight="Bold" Margin="0,18,0,8"/>
           <CheckBox x:Name="ChkTelemetry" Style="{StaticResource ModernCheck}" IsChecked="True"/>
           <CheckBox x:Name="ChkCortana"   Style="{StaticResource ModernCheck}" IsChecked="True"/>
           <CheckBox x:Name="ChkConsumer"  Style="{StaticResource ModernCheck}" IsChecked="True"/>
-
           <TextBlock x:Name="LblSecBg" Foreground="#7C5CFF" FontSize="11" FontWeight="Bold" Margin="0,18,0,8"/>
           <CheckBox x:Name="ChkBgApps"     Style="{StaticResource ModernCheck}" IsChecked="True"/>
           <CheckBox x:Name="ChkBgServices" Style="{StaticResource ModernCheck}" IsChecked="True"/>
           <CheckBox x:Name="ChkBgCortana"  Style="{StaticResource ModernCheck}" IsChecked="True"/>
-
           <TextBlock x:Name="LblSecPerf" Foreground="#7C5CFF" FontSize="11" FontWeight="Bold" Margin="0,18,0,8"/>
           <CheckBox x:Name="ChkRam"     Style="{StaticResource ModernCheck}" IsChecked="True"/>
           <CheckBox x:Name="ChkRamTrim" Style="{StaticResource ModernCheck}" IsChecked="True"/>
         </StackPanel>
       </ScrollViewer>
-
       <Border Grid.Row="3" Background="#101020" CornerRadius="0,0,14,14">
         <StackPanel Margin="22,12,22,12">
           <Grid>
             <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#8888A8" FontSize="12"/>
+            <Button x:Name="BtnUpdate" Content="GÜNCELLE" Style="{StaticResource UpdateBtn}"
+                    Width="240" Height="32" HorizontalAlignment="Right" Visibility="Collapsed"/>
           </Grid>
           <Grid Margin="0,10,0,0">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-              <Button x:Name="BtnUpdate" Content="GÜNCELLE" Style="{StaticResource DangerBtn}"
-                      Width="140" Height="38" Visibility="Collapsed" Margin="0,0,8,0"/>
-              <Button x:Name="BtnRevert" Content="GERİ AL" Style="{StaticResource DangerBtn}"
-                      Width="110" Height="38"/>
-            </StackPanel>
             <Button x:Name="BtnApply" Content="UYGULA" Style="{StaticResource PrimaryBtn}"
-                    Width="160" Height="42" HorizontalAlignment="Right"/>
+                    Width="200" Height="42" HorizontalAlignment="Right"/>
           </Grid>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
             <TextBlock x:Name="AuthorLabel" Foreground="#606080" FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"/>
@@ -512,7 +425,6 @@ try {
     $window = [Windows.Markup.XamlReader]::Load($reader)
     function N($n) { $window.FindName($n) }
 
-    # ---- Logo / banner ----
     if (Test-Path $logoPath) {
         try {
             $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
@@ -530,19 +442,17 @@ try {
         } catch { (N "BannerBox").Visibility = "Collapsed" }
     } else { (N "BannerBox").Visibility = "Collapsed" }
 
-    # ---- Pencere kontrolleri ----
     (N "HeaderBar").Add_MouseLeftButtonDown({ try { $window.DragMove() } catch {} })
     (N "BtnMin").Add_Click({ $window.WindowState = "Minimized" })
     (N "BtnClose").Add_Click({ $window.Close() })
 
-    # ---- Dil uygulama ----
+    # ---------- DİL ----------
     $script:CurrentLang = $settings.language
+
     function Apply-Language {
         $L = $Lang[$script:CurrentLang]
-        $map = @{
-            "LblSecAds"    = "SecAds";    "LblSecSearch" = "SecSearch"
-            "LblSecSystem" = "SecSystem"; "LblSecBg"     = "SecBg"
-            "LblSecPerf"   = "SecPerf"
+
+        $checks = @{
             "ChkExplorerAds"="ChkExplorerAds"; "ChkLockScreen"="ChkLockScreen"
             "ChkSettingsAds"="ChkSettingsAds"; "ChkGeneralTips"="ChkGeneralTips"
             "ChkFinishSetup"="ChkFinishSetup"; "ChkWelcome"="ChkWelcome"
@@ -555,18 +465,30 @@ try {
             "ChkBgCortana"="ChkBgCortana"
             "ChkRam"="ChkRam"; "ChkRamTrim"="ChkRamTrim"
         }
-        foreach ($k in $map.Keys) {
+        foreach ($k in $checks.Keys) {
             $ctrl = N $k
-            if ($ctrl) { $ctrl.Content = $L[$map[$k]] }
+            if ($ctrl) { $ctrl.Content = $L[$checks[$k]] }
         }
-        (N "SubTitle").Text   = $L.Subtitle
-        (N "BtnApply").Content  = $L.BtnApply
-        (N "BtnRevert").Content = $L.BtnRevert
-        (N "BtnLang").Content   = $L.LangBtn
-        (N "AuthorLabel").Text  = "by $($config.author)"
-        if ((N "BtnUpdate").Visibility -eq "Visible") {
-            $u = (N "BtnUpdate").Tag
-            (N "BtnUpdate").Content = $L.BtnUpdate
+
+        $labels = @{
+            "LblSecAds"="SecAds"; "LblSecSearch"="SecSearch"
+            "LblSecSystem"="SecSystem"; "LblSecBg"="SecBg"; "LblSecPerf"="SecPerf"
+        }
+        foreach ($k in $labels.Keys) {
+            $ctrl = N $k
+            if ($ctrl) { $ctrl.Text = $L[$labels[$k]] }
+        }
+
+        (N "SubTitle").Text    = ($L.Subtitle -f $localVersion)
+        (N "BtnApply").Content = $L.BtnApply
+        (N "BtnLang").Content  = $L.LangBtn
+        (N "AuthorLabel").Text = "by $($config.author)"
+
+        # Güncelleme butonu görünürse metnini de güncelle
+        $updBtn = N "BtnUpdate"
+        if ($updBtn.Visibility -eq "Visible") {
+            $rv = $updBtn.Tag
+            if ($rv) { $updBtn.Content = ($L.UpdateFound -f $rv) }
         }
     }
     Apply-Language
@@ -578,7 +500,7 @@ try {
         Apply-Language
     })
 
-    # ---- Link butonları ----
+    # Linkler
     foreach ($pair in @(@("BtnGithub","github"), @("BtnInstagram","instagram"), @("BtnWebsite","website"))) {
         $btn = N $pair[0]; $url = $config.($pair[1])
         if ($url -and $url -ne "#") {
@@ -587,12 +509,10 @@ try {
         } else { $btn.Visibility = "Collapsed" }
     }
 
-    # ---- Durum mesajları ----
     $status = N "StatusText"
-    $L = $Lang[$script:CurrentLang]
-    $status.Text = $L.StatusReady
+    $status.Text = $Lang[$script:CurrentLang].StatusReady
 
-    # ---- APPLY ----
+    # ---------- APPLY ----------
     (N "BtnApply").Add_Click({
         $ok = 0; $fail = 0
         $L = $Lang[$script:CurrentLang]
@@ -600,29 +520,20 @@ try {
         $status.Foreground = "#C4B5FD"
         $window.Dispatcher.Invoke([Action]{}, "Render")
 
-        $backup = Load-Backup
-
-        # Registry aksiyonları
         foreach ($id in $ActionDefs.Keys) {
             $cb = N $id
             if ($cb -and $cb.IsChecked) {
-                try { Apply-RegistryList -List $ActionDefs[$id] -Backup $backup; $ok++ }
-                catch {
-                    $fail++
-                    Write-Host "HATA ($id): $($_.Exception.Message)" -ForegroundColor Red
-                }
+                try { Apply-RegistryList -List $ActionDefs[$id]; $ok++ }
+                catch { $fail++; Write-Host "HATA ($id): $($_.Exception.Message)" -ForegroundColor Red }
             }
         }
 
-        # RAM temizleme
         if ((N "ChkRam").IsChecked) {
             try { Clear-StandbyMemory | Out-Null; $ok++ } catch { $fail++; Write-Host "RAM: $($_.Exception.Message)" -ForegroundColor Red }
         }
         if ((N "ChkRamTrim").IsChecked) {
             try { Trim-WorkingSets | Out-Null; $ok++ } catch { $fail++; Write-Host "Trim: $($_.Exception.Message)" -ForegroundColor Red }
         }
-
-        Save-Backup $backup
 
         if ($fail -eq 0) {
             $status.Text = ($L.StatusOK -f $ok)
@@ -633,55 +544,57 @@ try {
         }
     })
 
-    # ---- REVERT ----
-    (N "BtnRevert").Add_Click({
-        $L = $Lang[$script:CurrentLang]
-        $backup = Load-Backup
-        if ($backup.Count -eq 0) {
-            $status.Text = $L.StatusNoBackup
-            $status.Foreground = "#F59E0B"
-            return
-        }
+    # ---------- GÜNCELLEME KONTROLÜ ----------
+    # Sağlam sürüm karşılaştırması: her iki tarafı da [version] olarak dene
+    function Test-NewerVersion($remote, $local) {
+        try {
+            $r = [version]("$remote")
+            $l = [version]("$local")
+            return ($r -gt $l)
+        } catch { return $false }
+    }
 
-        $status.Text = $L.StatusReverting
-        $status.Foreground = "#C4B5FD"
-        $window.Dispatcher.Invoke([Action]{}, "Render")
-
-        $total = 0
-        foreach ($id in $ActionDefs.Keys) {
-            try { $total += Restore-RegistryList -List $ActionDefs[$id] -Backup $backup }
-            catch { Write-Host "REVERT HATA ($id): $($_.Exception.Message)" -ForegroundColor Red }
-        }
-
-        # Backup temizle
-        Remove-Item $backupPath -Force -ErrorAction SilentlyContinue
-
-        $status.Text = ($L.StatusReverted -f $total)
-        $status.Foreground = "#4ADE80"
-    })
-
-    # ---- AUTO-UPDATE KONTROLÜ ----
-    $versionUrl = "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/version.json"
     try {
-        $remote = Invoke-RestMethod -Uri $versionUrl -TimeoutSec 6 -ErrorAction Stop
-        if ($remote.version -and ([version]$remote.version -gt [version]$config.version)) {
+        $remoteInfo = Invoke-RestMethod -Uri $remoteVerUrl -TimeoutSec 6 -ErrorAction Stop
+        $remoteVer  = $remoteInfo.version
+
+        Write-Host "Local: $localVersion | Remote: $remoteVer" -ForegroundColor DarkGray
+
+        if ($remoteVer -and (Test-NewerVersion $remoteVer $localVersion)) {
             $btn = N "BtnUpdate"
-            $btn.Tag = $remote
-            $btn.Content = ($Lang[$script:CurrentLang].UpdateFound -f $remote.version)
-            $btn.Width = 220
+            $btn.Tag = $remoteVer
+            $btn.Content = ($Lang[$script:CurrentLang].UpdateFound -f $remoteVer)
             $btn.Visibility = "Visible"
 
             $btn.Add_Click({
-                $info = (N "BtnUpdate").Tag
-                if ($info -and $info.url) {
-                    Start-Process powershell.exe -Verb RunAs -ArgumentList @(
-                        "-NoProfile","-ExecutionPolicy","Bypass","-Command",
-                        "irm $($info.url) | iex"
-                    )
-                }
+                $rv = (N "BtnUpdate").Tag
+
+                # Onay
+                $msg = "Yeni sürüm: v$rv`n`nKurulum şimdi yapılsın mı?`n`nUygulama kapanıp yeniden başlatılacak."
+                $res = [System.Windows.MessageBox]::Show($msg, "Güncelleme", "YesNo", "Question")
+                if ($res -ne "Yes") { return }
+
+                # Bağımsız bir updater script'i yaz (kilidi kırmak için delay'li)
+                $updater = "$env:TEMP\WO-updater.ps1"
+                $content = @"
+Start-Sleep -Seconds 3
+Remove-Item "`$env:USERPROFILE\Windows-Optimizer" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item "`$env:USERPROFILE\Desktop\Windows Optimizer.lnk" -Force -ErrorAction SilentlyContinue
+irm $installerUrl | iex
+"@
+                Set-Content -Path $updater -Value $content -Encoding UTF8
+
+                # Detached updater'ı başlat
+                Start-Process powershell.exe -Verb RunAs -ArgumentList @(
+                    "-NoProfile","-ExecutionPolicy","Bypass","-File","`"$updater`""
+                )
+
+                # Mevcut uygulamayı tamamen kapat (dosya kilidini bırak)
+                $window.Close()
+                [Environment]::Exit(0)
             })
         } else {
-            $status.Text = ($Lang[$script:CurrentLang].UpdateNone -f $config.version)
+            Write-Host "Update yok, guncel surum: $localVersion" -ForegroundColor DarkGray
         }
     } catch {
         Write-Host "Update check failed: $($_.Exception.Message)" -ForegroundColor DarkGray

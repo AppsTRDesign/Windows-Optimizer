@@ -1,5 +1,5 @@
 {
-  "version": "1.3.0",
+  "version": "1.4.0",
   "url": "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1",
-  "notes": "Revert, TR/EN dil, self-contained RAM, auto-update"
+  "notes": "Revert kaldırıldı, update sistemi düzeltildi"
 }
