@@ -1,5 +1,4 @@
-# WindowsOptimizer.ps1 - Modern WPF GUI
-# UTF-8 çıktı için
+# WindowsOptimizer.ps1 - v1.1 (hata yakalama + -NoExit düzeltmesi)
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -8,37 +7,49 @@ $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIden
     ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
 if (-not $isAdmin) {
+    # >>> KRİTİK: -NoExit eklendi, hata olsa bile pencere açık kalır <<<
     Start-Process powershell.exe -Verb RunAs -ArgumentList @(
-        "-NoProfile","-ExecutionPolicy","Bypass","-File","`"$PSCommandPath`""
+        "-NoProfile","-ExecutionPolicy","Bypass","-NoExit","-File","`"$PSCommandPath`""
     )
     exit
 }
 
-Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
-Set-Location $PSScriptRoot
+$logPath = "$env:TEMP\WindowsOptimizer-error.log"
 
-# --- Config oku ---
-$configPath = Join-Path $PSScriptRoot "config.json"
-if (Test-Path $configPath) {
-    $config = Get-Content $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
-} else {
-    $config = [PSCustomObject]@{
-        author = "Anonim"; github = "#"; instagram = "#"; website = "#"; logo = "assets/logo.png"
+try {
+    Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
+    Set-Location $PSScriptRoot
+
+    # --- Config oku ---
+    $configPath = Join-Path $PSScriptRoot "config.json"
+    if (Test-Path $configPath) {
+        $config = Get-Content $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    } else {
+        $config = [PSCustomObject]@{
+            author="Anonim"; github="#"; instagram="#"; website="#"; logo="assets/logo.png"
+        }
     }
-}
 
-# --- Modülleri yükle ---
-. "$PSScriptRoot\modules\AdsBlocker.ps1"
-. "$PSScriptRoot\modules\FeatureManager.ps1"
-. "$PSScriptRoot\modules\RamCleaner.ps1"
-. "$PSScriptRoot\modules\BackgroundManager.ps1"
+    # --- Modülleri yükle (var mı kontrol et) ---
+    $mods = @("AdsBlocker","FeatureManager","RamCleaner","BackgroundManager")
+    foreach ($m in $mods) {
+        $p = Join-Path $PSScriptRoot "modules\$m.ps1"
+        if (Test-Path $p) { . $p } else { throw "Modül bulunamadı: $p" }
+    }
 
-# --- Logo yolu ---
-$logoPath = Join-Path $PSScriptRoot $config.logo
-if (-not (Test-Path $logoPath)) { $logoPath = "" }
+    # --- Logo yolu (boşluklu path güvenli) ---
+    $logoPath = Join-Path $PSScriptRoot ($config.logo -replace '/','\')
+    $logoUri  = $null
+    if (Test-Path $logoPath) {
+        try {
+            $logoUri = New-Object System.Uri($logoPath, [System.UriKind]::Absolute)
+        } catch {
+            Write-Host "Logo URI hatası: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
 
-# --- XAML Arayüz ---
-$xaml = @"
+    # --- XAML ---
+    $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Windows Optimizer" Height="760" Width="600"
@@ -47,7 +58,6 @@ $xaml = @"
         Background="Transparent" ResizeMode="CanResizeWithGrip">
 
   <Window.Resources>
-    <!-- Modern CheckBox -->
     <Style x:Key="ModernCheck" TargetType="CheckBox">
       <Setter Property="Foreground" Value="#E6E6F0"/>
       <Setter Property="FontSize" Value="13"/>
@@ -60,7 +70,7 @@ $xaml = @"
               <Border x:Name="Box" Width="20" Height="20" CornerRadius="5"
                       Background="#1E1E30" BorderBrush="#3A3A55" BorderThickness="1.5"
                       VerticalAlignment="Center" Margin="0,0,12,0">
-                <TextBlock x:Name="Check" Text="✓" Foreground="White" FontWeight="Bold"
+                <TextBlock x:Name="Check" Text="&#x2713;" Foreground="White" FontWeight="Bold"
                            FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"
                            Visibility="Collapsed"/>
               </Border>
@@ -81,7 +91,6 @@ $xaml = @"
       </Setter>
     </Style>
 
-    <!-- Başlık butonu -->
     <Style x:Key="TitleBtn" TargetType="Button">
       <Setter Property="Width" Value="34"/>
       <Setter Property="Height" Value="34"/>
@@ -106,7 +115,6 @@ $xaml = @"
       </Setter>
     </Style>
 
-    <!-- Uygula butonu -->
     <Style x:Key="ApplyBtn" TargetType="Button">
       <Setter Property="Foreground" Value="White"/>
       <Setter Property="FontSize" Value="14"/>
@@ -137,7 +145,6 @@ $xaml = @"
       </Setter>
     </Style>
 
-    <!-- Link butonu -->
     <Style x:Key="LinkBtn" TargetType="Button">
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="Foreground" Value="#9C8CFF"/>
@@ -162,7 +169,6 @@ $xaml = @"
     </Style>
   </Window.Resources>
 
-  <!-- Ana kart -->
   <Border CornerRadius="14" BorderBrush="#2A2A45" BorderThickness="1">
     <Border.Background>
       <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -178,8 +184,7 @@ $xaml = @"
         <RowDefinition Height="96"/>
       </Grid.RowDefinitions>
 
-      <!-- HEADER -->
-      <Border Grid.Row="0" x:Name="HeaderBar" CornerRadius="14,14,0,0" MouseLeftButtonDown="HeaderDrag">
+      <Border Grid.Row="0" x:Name="HeaderBar" CornerRadius="14,14,0,0">
         <Border.Background>
           <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
             <GradientStop Color="#1E1E38" Offset="0"/>
@@ -197,17 +202,15 @@ $xaml = @"
             </StackPanel>
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,14,0" VerticalAlignment="Center">
-            <Button x:Name="BtnMin" Content="—" Style="{StaticResource TitleBtn}"/>
-            <Button x:Name="BtnClose" Content="✕" Style="{StaticResource TitleBtn}" Margin="4,0,0,0"/>
+            <Button x:Name="BtnMin" Content="&#x2014;" Style="{StaticResource TitleBtn}"/>
+            <Button x:Name="BtnClose" Content="&#x2715;" Style="{StaticResource TitleBtn}" Margin="4,0,0,0"/>
           </StackPanel>
         </Grid>
       </Border>
 
-      <!-- İÇERİK -->
       <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,6,0,6">
         <StackPanel Margin="26,8,26,8">
 
-          <!-- Reklamlar -->
           <TextBlock Text="REKLAMLAR &amp; GİZLİLİK" Foreground="#7C5CFF" FontSize="11"
                      FontWeight="Bold" Margin="0,10,0,8"/>
           <CheckBox x:Name="ChkExplorerAds"   Style="{StaticResource ModernCheck}" Content="Dosya Gezgini reklamlarını kapat" IsChecked="True"/>
@@ -221,13 +224,11 @@ $xaml = @"
           <CheckBox x:Name="ChkStartMenuAds"  Style="{StaticResource ModernCheck}" Content="Başlat menüsü reklamlarını kapat" IsChecked="True"/>
           <CheckBox x:Name="ChkNotifSugg"     Style="{StaticResource ModernCheck}" Content="Bildirim önerilerini kapat" IsChecked="True"/>
 
-          <!-- Arama & Web -->
           <TextBlock Text="ARAMA &amp; WEB  (Yönetici)" Foreground="#7C5CFF" FontSize="11"
                      FontWeight="Bold" Margin="0,18,0,8"/>
           <CheckBox x:Name="ChkBing"          Style="{StaticResource ModernCheck}" Content="Aramada Bing sonuçlarını kapat" IsChecked="True"/>
           <CheckBox x:Name="ChkEdgeBar"       Style="{StaticResource ModernCheck}" Content="Edge arama çubuğu widget'ını kapat" IsChecked="True"/>
 
-          <!-- Sistem -->
           <TextBlock Text="SİSTEM  (Yönetici)" Foreground="#7C5CFF" FontSize="11"
                      FontWeight="Bold" Margin="0,18,0,8"/>
           <CheckBox x:Name="ChkTelemetry"     Style="{StaticResource ModernCheck}" Content="Telemetri ve veri toplamayı kapat" IsChecked="True"/>
@@ -235,28 +236,23 @@ $xaml = @"
           <CheckBox x:Name="ChkConsumer"      Style="{StaticResource ModernCheck}" Content="Tüketici özelliklerini kapat" IsChecked="True"/>
           <CheckBox x:Name="ChkBgApps"        Style="{StaticResource ModernCheck}" Content="Arka plan uygulamalarını kapat" IsChecked="True"/>
 
-          <!-- Performans -->
           <TextBlock Text="PERFORMANS" Foreground="#7C5CFF" FontSize="11"
                      FontWeight="Bold" Margin="0,18,0,8"/>
           <CheckBox x:Name="ChkRam"           Style="{StaticResource ModernCheck}" Content="RAM bekleme belleğini temizle (RAMMap indirir)"/>
-
         </StackPanel>
       </ScrollViewer>
 
-      <!-- FOOTER -->
       <Border Grid.Row="2" Background="#101020" CornerRadius="0,0,14,14">
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="30"/>
           </Grid.RowDefinitions>
-
           <Grid Grid.Row="0" Margin="22,10,22,4">
             <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#8888A8" FontSize="12"/>
             <Button x:Name="BtnApply" Content="UYGULA" Style="{StaticResource ApplyBtn}"
                     Width="160" Height="42" HorizontalAlignment="Right"/>
           </Grid>
-
           <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8">
             <TextBlock x:Name="AuthorLabel" Foreground="#606080" FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"/>
             <Button x:Name="BtnGithub"    Content="GitHub"    Style="{StaticResource LinkBtn}" Margin="0,0,10,0"/>
@@ -270,81 +266,102 @@ $xaml = @"
 </Window>
 "@
 
-# --- XAML yükle ---
-$reader = New-Object System.Xml.XmlNodeReader ([xml]$xaml)
-$window = [Windows.Markup.XamlReader]::Load($reader)
+    $reader = New-Object System.Xml.XmlNodeReader ([xml]$xaml)
+    $window = [Windows.Markup.XamlReader]::Load($reader)
 
-# --- Kontrolleri topla ---
-function N($n) { $window.FindName($n) }
+    function N($n) { $window.FindName($n) }
 
-# Logo
-if ($logoPath) {
-    $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
-    $bmp.BeginInit(); $bmp.UriSource = New-Object System.Uri($logoPath); $bmp.CacheOption = "OnLoad"; $bmp.EndInit()
-    (N "LogoImg").Source = $bmp
-}
-
-(N "SubTitle").Text  = "v1.0  •  Modüler Windows 10/11 Tweaker"
-(N "AuthorLabel").Text = "by $($config.author)"
-
-# --- Pencere sürükleme / kapatma ---
-(N "HeaderBar").Add_MouseLeftButtonDown({ try { $window.DragMove() } catch {} })
-(N "BtnMin").Add_Click({ $window.WindowState = "Minimized" })
-(N "BtnClose").Add_Click({ $window.Close() })
-
-# --- Link butonları ---
-foreach ($pair in @(@("BtnGithub","github"), @("BtnInstagram","instagram"), @("BtnWebsite","website"))) {
-    $btn = N $pair[0]; $url = $config.($pair[1])
-    if ($url -and $url -ne "#") {
-        $btn.Add_Click({ Start-Process $url }.GetNewClosure())
-    } else { $btn.Visibility = "Collapsed" }
-}
-
-# --- Apply Handler ---
-$status = N "StatusText"
-
-$actionMap = [ordered]@{
-    ChkExplorerAds = { Disable-ExplorerAds }
-    ChkLockScreen  = { Disable-LockScreenAds }
-    ChkSettingsAds = { Disable-SettingsAds }
-    ChkGeneralTips = { Disable-GeneralTips }
-    ChkFinishSetup = { Disable-FinishSetupAds }
-    ChkWelcome     = { Disable-WelcomeExperience }
-    ChkPersonalAds = { Disable-PersonalizedAds }
-    ChkTailored    = { Disable-TailoredExperiences }
-    ChkStartMenuAds= { Disable-StartMenuAds }
-    ChkNotifSugg   = { Disable-NotificationSuggestions }
-    ChkBing        = { Disable-BingSearch }
-    ChkEdgeBar     = { Disable-EdgeSearchBar }
-    ChkTelemetry   = { Disable-Telemetry }
-    ChkCortana     = { Disable-Cortana }
-    ChkConsumer    = { Disable-ConsumerFeatures }
-    ChkBgApps      = { Disable-BackgroundApps }
-    ChkRam         = { Clear-StandbyMemory }
-}
-
-(N "BtnApply").Add_Click({
-    $ok = 0; $fail = 0
-    $status.Text = "Uygulanıyor..."
-    $status.Foreground = "#C4B5FD"
-    $window.Dispatcher.Invoke([Action]{}, "Render")
-
-    foreach ($kv in $actionMap.GetEnumerator()) {
-        $cb = N $kv.Key
-        if ($cb -and $cb.IsChecked) {
-            try { & $kv.Value; $ok++ }
-            catch { $fail++; Write-Host "HATA ($($kv.Key)): $($_.Exception.Message)" -ForegroundColor Red }
+    # Logo yükle (güvenli)
+    if ($logoUri) {
+        try {
+            $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
+            $bmp.BeginInit()
+            $bmp.UriSource   = $logoUri
+            $bmp.CacheOption = "OnLoad"
+            $bmp.EndInit()
+            (N "LogoImg").Source = $bmp
+        } catch {
+            Write-Host "Logo yüklenemedi: $($_.Exception.Message)" -ForegroundColor Yellow
         }
     }
 
-    if ($fail -eq 0) {
-        $status.Text = "✓ $ok değişiklik başarıyla uygulandı!"
-        $status.Foreground = "#4ADE80"
-    } else {
-        $status.Text = "⚠ $ok başarılı, $fail hata. Detay için konsola bakın."
-        $status.Foreground = "#F59E0B"
-    }
-})
+    (N "SubTitle").Text     = "v1.1  -  Modüler Windows 10/11 Tweaker"
+    (N "AuthorLabel").Text  = "by $($config.author)"
 
-# --- Göster ---
-$window.ShowDialog() | Out-Null
+    (N "HeaderBar").Add_MouseLeftButtonDown({ try { $window.DragMove() } catch {} })
+    (N "BtnMin").Add_Click({ $window.WindowState = "Minimized" })
+    (N "BtnClose").Add_Click({ $window.Close() })
+
+    foreach ($pair in @(@("BtnGithub","github"), @("BtnInstagram","instagram"), @("BtnWebsite","website"))) {
+        $btn = N $pair[0]; $url = $config.($pair[1])
+        if ($url -and $url -ne "#") {
+            $u = $url
+            $btn.Add_Click({ Start-Process $u }.GetNewClosure())
+        } else { $btn.Visibility = "Collapsed" }
+    }
+
+    $status = N "StatusText"
+
+    $actionMap = [ordered]@{
+        ChkExplorerAds = { Disable-ExplorerAds }
+        ChkLockScreen  = { Disable-LockScreenAds }
+        ChkSettingsAds = { Disable-SettingsAds }
+        ChkGeneralTips = { Disable-GeneralTips }
+        ChkFinishSetup = { Disable-FinishSetupAds }
+        ChkWelcome     = { Disable-WelcomeExperience }
+        ChkPersonalAds = { Disable-PersonalizedAds }
+        ChkTailored    = { Disable-TailoredExperiences }
+        ChkStartMenuAds= { Disable-StartMenuAds }
+        ChkNotifSugg   = { Disable-NotificationSuggestions }
+        ChkBing        = { Disable-BingSearch }
+        ChkEdgeBar     = { Disable-EdgeSearchBar }
+        ChkTelemetry   = { Disable-Telemetry }
+        ChkCortana     = { Disable-Cortana }
+        ChkConsumer    = { Disable-ConsumerFeatures }
+        ChkBgApps      = { Disable-BackgroundApps }
+        ChkRam         = { Clear-StandbyMemory }
+    }
+
+    (N "BtnApply").Add_Click({
+        $ok = 0; $fail = 0
+        $status.Text = "Uygulanıyor..."
+        $status.Foreground = "#C4B5FD"
+        $window.Dispatcher.Invoke([Action]{}, "Render")
+
+        foreach ($kv in $actionMap.GetEnumerator()) {
+            $cb = N $kv.Key
+            if ($cb -and $cb.IsChecked) {
+                try { & $kv.Value; $ok++ }
+                catch {
+                    $fail++
+                    Write-Host "HATA ($($kv.Key)): $($_.Exception.Message)" -ForegroundColor Red
+                }
+            }
+        }
+
+        if ($fail -eq 0) {
+            $status.Text = "OK - $ok değişiklik uygulandı"
+            $status.Foreground = "#4ADE80"
+        } else {
+            $status.Text = "UYARI - $ok başarılı, $fail hata"
+            $status.Foreground = "#F59E0B"
+        }
+    })
+
+    $window.ShowDialog() | Out-Null
+}
+catch {
+    $err = "HATA: $($_.Exception.Message)`r`n`r`nSATIR: $($_.InvocationInfo.ScriptLineNumber)`r`n`r`nSTACK:`r`n$($_.ScriptStackTrace)"
+    try {
+        [System.IO.File]::WriteAllText($logPath, $err, [System.Text.Encoding]::UTF8)
+    } catch {}
+
+    try {
+        [System.Windows.MessageBox]::Show($err, "Windows Optimizer - Hata", "OK", "Error") | Out-Null
+    } catch {
+        Write-Host $err -ForegroundColor Red
+    }
+    Write-Host ""
+    Write-Host "Detay log: $logPath" -ForegroundColor Yellow
+    Read-Host "Kapatmak için Enter'a basın"
+}
