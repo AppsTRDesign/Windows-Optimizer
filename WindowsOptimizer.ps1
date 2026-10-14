@@ -147,15 +147,29 @@ TR = @{
     SvLoading = "Servisler taranıyor…"; SvSummary = "{0} servis · {1} çalışıyor · {2} öneri · {3} üçüncü parti"
     SvHint = "Öneriler yalnızca güvenli olduğu bilinen servisler içindir. Her değişiklik kaydedilir ve geri alınabilir."
     BtnSvRefresh = "Yenile"; BtnSvApplyRec = "Güvenli önerileri uygula"; SvSearchHint = "Servis ara…"
-    SvF_rec = "Öneriler ({0})"; SvF_third = "Üçüncü parti ({0})"; SvF_run = "Çalışanlar ({0})"; SvF_all = "Tümü ({0})"
+    SvF_rec = "Öneriler ({0})"; SvF_third = "Üçüncü parti ({0})"; SvF_run = "Çalışanlar ({0})"; SvF_all = "Tümü ({0})"; SvF_locked = "🔒 Korumalı ({0})"
     SvMode_Automatic = "Otomatik"; SvMode_Manual = "El ile"; SvMode_Disabled = "Kapalı"
     SvRun = "Çalışıyor"; SvStop = "Durdu"; SvBadgeRec = "ÖNERİ: {0}"; SvBadgeCaution = "DİKKAT"; SvBadgeThird = "ÜÇÜNCÜ PARTİ"; SvBadgeWin = "WINDOWS"
     SvUndo = "Geri al"; SvEmpty = "Bu filtrede servis yok — sisteminiz bu açıdan temiz görünüyor."
+    SvLockedInfo = "Bu servisler üreticisi, güvenlik yazılımı ya da Windows tarafından korunuyor. Ayarları buradan değiştirilemez; yalnızca bilgi amaçlı listelenir."
     SvChanged = "{0}: başlangıç tipi {1} yapıldı"; SvRestored = "{0} orijinal ayarına döndürüldü"; SvFail = "{0} değiştirilemedi: {1}"
     SvWarnTitle = "Bu bir Windows bileşeni"; SvWarnMsg = "'{0}' Windows'un parçası. Devre dışı bırakmak bazı özelliklerin çalışmamasına yol açabilir. Emin misiniz?"
     SvCautionTitle = "Dikkat gerektiren servis"; SvContinue = "Devam et"
     SvRecTitle = "Güvenli öneriler uygulansın mı?"; SvRecMsg = "{0} servisin başlangıç tipi önerilen değere ayarlanacak. 'Dikkat' etiketli servisler dahil değildir. Tüm değişiklikler geri alınabilir."
     SvRecDone = "{0} servis güncellendi"; SvApply = "Uygula"
+    SvBadgeLocked = "KORUMALI"
+    SvProt_vendor = "Güvenlik yazılımı kendini koruyor; bu servisi yalnızca kendi uygulamasının ayarlarından yönetebilirsiniz."
+    SvProt_acl = "Üreticisi bu servisin ayarlarının değiştirilmesine izin vermiyor (yönetici dahil)."
+    SvProt_user = "Kullanıcı başına çalışan servis kopyası; Windows tarafından ana şablonu üzerinden otomatik yönetilir."
+    SvLockedFail = "{0} korumalı bir servis; ayarı değiştirilemez"
+    BtnSvRestoreAll = "Eskiye döndür ({0})"; SvRestoreTitle = "Tüm servis değişiklikleri geri alınsın mı?"
+    SvRestoreMsg = "{0} servis, Windows Optimizer ile değiştirilmeden önceki başlangıç tipine döndürülecek:"
+    SvRestoreOk = "Eskiye döndür"; SvRestoreDone = "{0} servis eski ayarına döndürüldü"; SvRestoreNone = "Geri alınacak servis değişikliği yok"
+    RestartText_logoff = "Bazı değişikliklerin etkinleşmesi için oturumu kapatıp yeniden açmanız gerekiyor."
+    RestartText_reboot = "Bazı değişikliklerin etkinleşmesi için bilgisayarı yeniden başlatmanız gerekiyor."
+    RestartBtn_explorer = "Explorer'ı yeniden başlat"; RestartBtn_logoff = "Oturumu kapat"; RestartBtn_reboot = "Yeniden başlat"
+    RebootTitle = "Bilgisayar yeniden başlatılsın mı?"; RebootMsg = "Açık dosyalarınızı kaydedin. Bilgisayar 10 saniye içinde yeniden başlatılacak."
+    LogoffTitle = "Oturum kapatılsın mı?"; LogoffMsg = "Açık dosyalarınızı kaydedin. Tüm uygulamalar kapanacak ve oturumunuz kapatılacak."
     SuJunkBadge = "KAPATILABİLİR"; BtnSuDisableJunk = "Gereksizleri kapat"
     SuJunkTitle = "Gereksiz başlangıç öğeleri kapatılsın mı?"; SuJunkMsg = "{0} öğe Windows açılırken başlamayacak:`n`n{1}`n`nUygulamalar silinmez; ihtiyaç duyduğunuzda normal şekilde açabilirsiniz."
     SuJunkDone = "{0} başlangıç öğesi kapatıldı"; SuJunkNone = "Kapatılacak gereksiz öğe yok"
@@ -247,15 +261,29 @@ EN = @{
     SvLoading = "Scanning services…"; SvSummary = "{0} services · {1} running · {2} suggestions · {3} third-party"
     SvHint = "Suggestions only cover services known to be safe. Every change is recorded and can be undone."
     BtnSvRefresh = "Refresh"; BtnSvApplyRec = "Apply safe suggestions"; SvSearchHint = "Search services…"
-    SvF_rec = "Suggestions ({0})"; SvF_third = "Third-party ({0})"; SvF_run = "Running ({0})"; SvF_all = "All ({0})"
+    SvF_rec = "Suggestions ({0})"; SvF_third = "Third-party ({0})"; SvF_run = "Running ({0})"; SvF_all = "All ({0})"; SvF_locked = "🔒 Protected ({0})"
     SvMode_Automatic = "Auto"; SvMode_Manual = "Manual"; SvMode_Disabled = "Disabled"
     SvRun = "Running"; SvStop = "Stopped"; SvBadgeRec = "SUGGESTED: {0}"; SvBadgeCaution = "CAUTION"; SvBadgeThird = "THIRD-PARTY"; SvBadgeWin = "WINDOWS"
     SvUndo = "Undo"; SvEmpty = "No services in this filter — looks clean."
+    SvLockedInfo = "These services are protected by their vendor, security software or Windows. Their settings can't be changed here; they are listed for information only."
     SvChanged = "{0}: startup type set to {1}"; SvRestored = "{0} restored to its original setting"; SvFail = "Could not change {0}: {1}"
     SvWarnTitle = "This is a Windows component"; SvWarnMsg = "'{0}' is part of Windows. Disabling it may break some features. Are you sure?"
     SvCautionTitle = "Service needs caution"; SvContinue = "Continue"
     SvRecTitle = "Apply safe suggestions?"; SvRecMsg = "The startup type of {0} services will be set to the suggested value. Services marked 'Caution' are not included. All changes can be undone."
     SvRecDone = "{0} services updated"; SvApply = "Apply"
+    SvBadgeLocked = "PROTECTED"
+    SvProt_vendor = "Security software protects itself; manage this service from its own app settings."
+    SvProt_acl = "The vendor does not allow this service's settings to be changed (even by administrators)."
+    SvProt_user = "Per-user service instance; Windows manages it automatically through its template."
+    SvLockedFail = "{0} is a protected service; its setting cannot be changed"
+    BtnSvRestoreAll = "Restore all ({0})"; SvRestoreTitle = "Undo all service changes?"
+    SvRestoreMsg = "{0} services will be returned to the startup type they had before Windows Optimizer changed them:"
+    SvRestoreOk = "Restore"; SvRestoreDone = "{0} services restored"; SvRestoreNone = "No service changes to undo"
+    RestartText_logoff = "Sign out and back in for some changes to take effect."
+    RestartText_reboot = "Restart your PC for some changes to take effect."
+    RestartBtn_explorer = "Restart Explorer"; RestartBtn_logoff = "Sign out"; RestartBtn_reboot = "Restart"
+    RebootTitle = "Restart the PC?"; RebootMsg = "Save your open files. The PC will restart in 10 seconds."
+    LogoffTitle = "Sign out?"; LogoffMsg = "Save your open files. All apps will close and you will be signed out."
     SuJunkBadge = "CAN DISABLE"; BtnSuDisableJunk = "Disable unneeded"
     SuJunkTitle = "Disable unneeded startup items?"; SuJunkMsg = "{0} items will no longer start with Windows:`n`n{1}`n`nApps are not removed; you can open them normally when needed."
     SuJunkDone = "{0} startup items disabled"; SuJunkNone = "No unneeded items to disable"
@@ -399,6 +427,10 @@ $xaml = @'
                 <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentGrad}"/>
                 <Setter TargetName="Bd" Property="BorderBrush" Value="#8B5CF6"/>
                 <Setter Property="Foreground" Value="White"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.38"/>
+                <Setter Property="Cursor" Value="No"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -1082,22 +1114,24 @@ $xaml = @'
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
             <Border Style="{StaticResource Card}" Padding="18,12" Margin="0,0,14,0">
               <Grid>
-                <StackPanel VerticalAlignment="Center" Margin="0,0,330,0">
+                <StackPanel VerticalAlignment="Center" Margin="0,0,500,0">
                   <TextBlock x:Name="SvSummary" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource Txt}"/>
                   <TextBlock x:Name="SvHint" Style="{StaticResource Desc}" Margin="0,4,0,0"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                   <Button x:Name="BtnSvRefresh" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
+                  <Button x:Name="BtnSvRestoreAll" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
                   <Button x:Name="BtnSvApplyRec" Style="{StaticResource PrimaryBtn}" Height="36"/>
                 </StackPanel>
               </Grid>
             </Border>
             <Grid Grid.Row="1" Margin="0,12,14,0">
-              <WrapPanel VerticalAlignment="Center" Margin="0,0,260,0">
+              <WrapPanel VerticalAlignment="Center" Margin="0,0,256,0">
                 <RadioButton x:Name="SvFRec"   GroupName="svf" Style="{StaticResource SegBtn}" Tag="rec" IsChecked="True"/>
                 <RadioButton x:Name="SvFThird" GroupName="svf" Style="{StaticResource SegBtn}" Tag="third"/>
                 <RadioButton x:Name="SvFRun"   GroupName="svf" Style="{StaticResource SegBtn}" Tag="run"/>
                 <RadioButton x:Name="SvFAll"   GroupName="svf" Style="{StaticResource SegBtn}" Tag="all"/>
+                <RadioButton x:Name="SvFLocked" GroupName="svf" Style="{StaticResource SegBtn}" Tag="locked"/>
               </WrapPanel>
               <Border HorizontalAlignment="Right" Width="240" Height="34" CornerRadius="9" Background="#1B1B2B" BorderBrush="#2A2A42" BorderThickness="1">
                 <Grid>
@@ -1559,7 +1593,7 @@ try {
             Update-TweakSummary
 
             $restarts = @($out | Where-Object { $_.Ok } | ForEach-Object { (Get-WoTweak $_.Id).Restart } | Where-Object { $_ })
-            if ($restarts -contains "explorer") { (N "RestartBar").Visibility = "Visible" }
+            foreach ($r in $restarts) { Set-RestartNeed $r }
             $msg = if ($fail.Count -eq 0 -and -not $err) { (T "ApplyOK") -f $ok } else { (T "ApplyWarn") -f $ok, [Math]::Max(1, $fail.Count) }
             if ($fail.Count -gt 0) {
                 $names = $fail | ForEach-Object { (Get-WoTweak $_.Id)[$script:Lang][0] }
@@ -1596,11 +1630,42 @@ try {
             if (-not (Get-Process explorer -ErrorAction SilentlyContinue)) { Start-Process explorer.exe }
         } -Done {
             param($out, $err)
-            (N "RestartBar").Visibility = "Collapsed"
+            if ($script:RestartNeed -eq "explorer") { Set-RestartNeed $null }
             Set-Status (T "ExplorerOK") "ok"
         }
     }
-    (N "BtnRestartExplorer").Add_Click({ Restart-Explorer })
+    # Gereken en guclu islem gosterilir: reboot > logoff > explorer
+    $script:RestartNeed = $null
+    function Set-RestartNeed([string]$Need) {
+        $rank = @{ explorer = 1; logoff = 2; reboot = 3 }
+        if (-not $Need) { $script:RestartNeed = $null }
+        elseif (-not $script:RestartNeed -or $rank[$Need] -gt $rank[$script:RestartNeed]) { $script:RestartNeed = $Need }
+        Update-RestartBar
+    }
+    function Update-RestartBar {
+        $bar = N "RestartBar"
+        if (-not $script:RestartNeed) { $bar.Visibility = "Collapsed"; return }
+        $bar.Visibility = "Visible"
+        (N "RestartText").Text = if ($script:RestartNeed -eq "explorer") { T "RestartText" } else { T "RestartText_$($script:RestartNeed)" }
+        (N "BtnRestartExplorer").Content = T "RestartBtn_$($script:RestartNeed)"
+    }
+    (N "BtnRestartExplorer").Add_Click({
+        switch ($script:RestartNeed) {
+            "reboot" {
+                if (Show-WoDialog -Title (T "RebootTitle") -Message (T "RebootMsg") -Kind "warn" -Ok (T "RestartBtn_reboot") -Cancel (T "DlgCancel") -Danger) {
+                    Save-WoSettings
+                    Start-Process shutdown.exe -ArgumentList "/r", "/t", "10", "/c", "`"Windows Optimizer`"" -WindowStyle Hidden
+                }
+            }
+            "logoff" {
+                if (Show-WoDialog -Title (T "LogoffTitle") -Message (T "LogoffMsg") -Kind "warn" -Ok (T "RestartBtn_logoff") -Cancel (T "DlgCancel") -Danger) {
+                    Save-WoSettings
+                    Start-Process shutdown.exe -ArgumentList "/l" -WindowStyle Hidden
+                }
+            }
+            default { Restart-Explorer }
+        }
+    })
     (N "QaExplorer").Add_Click({ Restart-Explorer })
 
     $script:RestoreBusy = $false
@@ -2238,7 +2303,7 @@ try {
         if ($script:SvcBusy) { return }
         $script:SvcBusy = $true
         (N "SvSummary").Text = T "SvLoading"
-        (N "BtnSvRefresh").IsEnabled = $false; (N "BtnSvApplyRec").IsEnabled = $false
+        (N "BtnSvRefresh").IsEnabled = $false; (N "BtnSvApplyRec").IsEnabled = $false; (N "BtnSvRestoreAll").IsEnabled = $false
         Start-Bg -Work {
             param($M1, $M2)
             . $M1; . $M2
@@ -2261,24 +2326,30 @@ try {
 
     function Build-ServiceList {
         $list = N "ServiceList"; $list.Children.Clear()
-        $all = $script:Services
+        # Korumali servisler yalnizca kendi sekmesinde listelenir
+        $lockedSet = @($script:Services | Where-Object { $_.Protected -and $_.Protected -ne "none" })
+        $all = @($script:Services | Where-Object { -not ($_.Protected -and $_.Protected -ne "none") })
         $counts = @{
             rec = @($all | Where-Object Category -eq "rec").Count; third = @($all | Where-Object { -not $_.IsMicrosoft }).Count
-            run = @($all | Where-Object State -eq "Running").Count; all = $all.Count
+            run = @($all | Where-Object State -eq "Running").Count; all = $all.Count; locked = $lockedSet.Count
         }
-        foreach ($f in @("rec", "third", "run", "all")) {
-            $rb = N ("SvF" + @{ rec = "Rec"; third = "Third"; run = "Run"; all = "All" }[$f])
+        foreach ($f in @("rec", "third", "run", "all", "locked")) {
+            $rb = N ("SvF" + @{ rec = "Rec"; third = "Third"; run = "Run"; all = "All"; locked = "Locked" }[$f])
             $rb.Content = (T "SvF_$f") -f $counts[$f]
         }
-        (N "SvSummary").Text = (T "SvSummary") -f $counts.all, $counts.run, $counts.rec, $counts.third
+        (N "SvSummary").Text = (T "SvSummary") -f $script:Services.Count, @($script:Services | Where-Object State -eq "Running").Count, $counts.rec, $counts.third
         $safeRec = @($all | Where-Object { $_.Category -eq "rec" -and $_.Risk -eq "safe" }).Count
         (N "BtnSvApplyRec").IsEnabled = ($safeRec -gt 0) -and -not $script:SvcBusy
+        $changed = @($script:Services | Where-Object { $_.Original -and $_.Original -ne $_.StartMode }).Count
+        (N "BtnSvRestoreAll").Content = (T "BtnSvRestoreAll") -f $changed
+        (N "BtnSvRestoreAll").IsEnabled = ($changed -gt 0) -and -not $script:SvcBusy
 
         $q = "$((N 'SvSearch').Text)".Trim()
         $items = switch ($script:SvcFilter) {
             "rec"   { @($all | Where-Object Category -eq "rec") }
             "third" { @($all | Where-Object { -not $_.IsMicrosoft }) }
             "run"   { @($all | Where-Object State -eq "Running") }
+            "locked" { $lockedSet }
             default { @($all) }
         }
         if ($q) { $items = @($items | Where-Object { $_.Display -like "*$q*" -or $_.Name -like "*$q*" -or $_.Company -like "*$q*" }) }
@@ -2287,6 +2358,14 @@ try {
         if ($items.Count -eq 0) {
             $e = New-Tb (T "SvEmpty") 13 "#7A7A94"; $e.Margin = New-Object Windows.Thickness(6, 20, 0, 0)
             [void]$list.Children.Add($e); return
+        }
+        if ($script:SvcFilter -eq "locked") {
+            $info = New-Object Windows.Controls.Border
+            $info.Background = Brush "#2A1520"; $info.BorderBrush = Brush "#5C2A35"; $info.BorderThickness = New-Object Windows.Thickness(1)
+            $info.CornerRadius = New-Object Windows.CornerRadius(10); $info.Padding = New-Object Windows.Thickness(16, 10, 16, 10)
+            $info.Margin = New-Object Windows.Thickness(0, 0, 0, 12)
+            $it = New-Tb ("🔒  " + (T "SvLockedInfo")) 12 "#FCA5A5"; $info.Child = $it
+            [void]$list.Children.Add($info)
         }
         $card = New-Object Windows.Controls.Border
         $card.Style = $window.FindResource("Card"); $card.Padding = New-Object Windows.Thickness(0)
@@ -2310,14 +2389,17 @@ try {
             $tr = New-Object Windows.Controls.WrapPanel
             $nm = New-Tb $svc.Display 13.5 "#EDEDF5"; $nm.TextWrapping = "NoWrap"; $nm.TextTrimming = "CharacterEllipsis"
             [void]$tr.Children.Add($nm)
+            $locked = $svc.Protected -and $svc.Protected -ne "none"
+            if ($locked) { [void]$tr.Children.Add((New-Badge ("🔒 " + (T "SvBadgeLocked")) "#3A1520" "#FCA5A5")) }
             if ($svc.Category -eq "rec") { [void]$tr.Children.Add((New-Badge ((T "SvBadgeRec") -f (T "SvMode_$($svc.RecStart)")) "#2A2350" "#C4B5FD")) }
             if ($svc.RecStart -and $svc.Risk -eq "caution") { [void]$tr.Children.Add((New-Badge (T "SvBadgeCaution") "#3A2E10" "#FCD34D")) }
             if (-not $svc.IsMicrosoft) { [void]$tr.Children.Add((New-Badge (T "SvBadgeThird") "#1E2A44" "#7DD3FC")) }
             elseif (-not $svc.RecStart) { [void]$tr.Children.Add((New-Badge (T "SvBadgeWin") "#1C1C2C" "#8A8AA6")) }
             $reason = if ($script:Lang -eq "TR") { $svc.ReasonTR } else { $svc.ReasonEN }
+            if ($locked) { $reason = T "SvProt_$($svc.Protected)" }
             if (-not $reason) { $reason = $svc.Description }
             if ($reason.Length -gt 170) { $reason = $reason.Substring(0, 167) + "…" }
-            $ds = New-Tb $reason 11.5 $(if ($svc.ReasonTR) { "#B4B4CC" } else { "#7A7A94" }); $ds.Margin = New-Object Windows.Thickness(0, 3, 0, 0)
+            $ds = New-Tb $reason 11.5 $(if ($locked) { "#C9A3A3" } elseif ($svc.ReasonTR) { "#B4B4CC" } else { "#7A7A94" }); $ds.Margin = New-Object Windows.Thickness(0, 3, 0, 0)
             $state = if ($svc.State -eq "Running") { T "SvRun" } else { T "SvStop" }
             $metaParts = @($state, $svc.Name)
             if ($svc.Company) { $metaParts = @($svc.Company) + $metaParts }
@@ -2338,7 +2420,7 @@ try {
                 $rb.Style = $seg; $rb.GroupName = "svc_" + $svc.Name; $rb.Content = T "SvMode_$m"; $rb.FontSize = 11.5
                 $rb.Tag = @{ Svc = $svc; Mode = $m }; $rb.IsChecked = ($svc.StartMode -eq $m)
                 if ($m -eq "Disabled") { $rb.Margin = New-Object Windows.Thickness(0) }
-                if ($svc.StartMode -notin @("Automatic", "Manual", "Disabled")) { $rb.IsEnabled = $false }
+                if ($locked -or $svc.StartMode -notin @("Automatic", "Manual", "Disabled")) { $rb.IsEnabled = $false }
                 $rb.Add_Click({ param($s) Set-ServiceUi $s.Tag.Svc $s.Tag.Mode })
                 [void]$modes.Children.Add($rb)
             }
@@ -2351,7 +2433,7 @@ try {
     }
 
     function Set-ServiceUi($svc, [string]$Mode) {
-        if ($svc.StartMode -eq $Mode -or $script:SvcBusy) { Build-ServiceList; return }
+        if ($svc.StartMode -eq $Mode -or $script:SvcBusy -or ($svc.Protected -and $svc.Protected -ne "none")) { Build-ServiceList; return }
         if ($Mode -eq "Disabled" -and $svc.IsMicrosoft -and -not $svc.RecStart) {
             if (-not (Show-WoDialog -Title (T "SvWarnTitle") -Message ((T "SvWarnMsg") -f $svc.Display) -Kind "warn" -Ok (T "SvContinue") -Cancel (T "DlgCancel") -Danger)) { Build-ServiceList; return }
         } elseif ($svc.Risk -eq "caution" -and $Mode -ne "Automatic") {
@@ -2369,7 +2451,13 @@ try {
             param($out, $err)
             $script:SvcBusy = $false
             $p = $script:SvcPending; $svc = $p.Svc
-            if ($err) { Set-Status ((T "SvFail") -f $svc.Display, $err) "err"; Build-ServiceList; return }
+            if ($err) {
+                Write-WoLog "Servis ($($svc.Name)): $err"
+                if ($err -match 'FAILED 5|denied|engellendi') { $svc.Protected = $(if ($svc.IsMicrosoft) { "acl" } else { "vendor" }); Set-Status ((T "SvLockedFail") -f $svc.Display) "warn" }
+                elseif ($err -match 'FAILED 87') { $svc.Protected = "user"; Set-Status ((T "SvLockedFail") -f $svc.Display) "warn" }
+                else { Set-Status ((T "SvFail") -f $svc.Display, $err) "err" }
+                Build-ServiceList; return
+            }
             if (-not $svc.Original) { $svc.Original = $svc.StartMode }
             $svc.StartMode = $p.Mode
             $st = @($out) | Select-Object -Last 1
@@ -2430,9 +2518,32 @@ try {
         }
     }
 
+    function Restore-AllServicesUi {
+        if ($script:SvcBusy) { return }
+        $changed = @($script:Services | Where-Object { $_.Original -and $_.Original -ne $_.StartMode })
+        if ($changed.Count -eq 0) { Set-Status (T "SvRestoreNone") "info"; return }
+        $list = ($changed | ForEach-Object { "•  $($_.Display):  $(T "SvMode_$($_.StartMode)") → $(T "SvMode_$($_.Original)")" }) -join "`n"
+        if (-not (Show-WoDialog -Title (T "SvRestoreTitle") -Message (((T "SvRestoreMsg") -f $changed.Count) + "`n`n" + $list) -Kind "info" -Ok (T "SvRestoreOk") -Cancel (T "DlgCancel"))) { return }
+        $script:SvcBusy = $true
+        (N "BtnSvRestoreAll").IsEnabled = $false
+        Set-Status (T "Applying") "busy"
+        Start-Bg -Work {
+            param($M1, $M2)
+            . $M1; . $M2
+            Restore-AllWoServices
+        } -ArgList @((Join-Path $AppDir "modules\Startup.ps1"), (Join-Path $AppDir "modules\Services.ps1")) -Done {
+            param($out, $err)
+            $script:SvcBusy = $false
+            $ok = @($out | Where-Object Ok).Count
+            foreach ($f in @($out | Where-Object { -not $_.Ok })) { Write-WoLog "Servis geri alma ($($f.Name)): $($f.Err)" }
+            Set-Status ((T "SvRestoreDone") -f $ok) $(if ($ok -eq @($out).Count) { "ok" } else { "warn" })
+            Load-Services
+        }
+    }
+    (N "BtnSvRestoreAll").Add_Click({ Restore-AllServicesUi })
     (N "BtnSvRefresh").Add_Click({ Load-Services })
     (N "BtnSvApplyRec").Add_Click({ Apply-SafeServiceRecs })
-    foreach ($f in @("SvFRec", "SvFThird", "SvFRun", "SvFAll")) {
+    foreach ($f in @("SvFRec", "SvFThird", "SvFRun", "SvFAll", "SvFLocked")) {
         (N $f).Add_Checked({ param($s) $script:SvcFilter = $s.Tag; if ($script:SvcLoaded) { Build-ServiceList; (N "SvScroll").ScrollToTop() } })
     }
     (N "SvSearch").Add_TextChanged({
@@ -2596,7 +2707,7 @@ try {
         "NavCaption", "UpdTitle", "HeroCaption", "HeroLabel", "BtnQuickOptimize", "BtnGoTweaks",
         "CpuTitle", "RamTitle", "DiskTitle", "SysTitle", "LblOs", "LblBuild", "LblCpu", "LblRam", "LblUptime", "LblProc",
         "QaTitle", "QaCleanT", "QaCleanD", "QaExplorerT", "QaExplorerD", "QaRestoreT", "QaRestoreD",
-        "BtnSelRec", "BtnSelReset", "RestartText", "BtnRestartExplorer",
+        "BtnSelRec", "BtnSelReset",
         "MemInUseT", "MemStandbyT", "MemModifiedT", "MemFreeT", "ChartTitle", "LiveText", "LegInUse", "LegModified", "LegStandby",
         "AxisLeft", "AxisRight", "CleanTitle", "OptWorkingSets", "OptWorkingSetsD", "OptModified", "OptModifiedD",
         "OptStandby", "OptStandbyD", "OptLowStandby", "OptLowStandbyD", "OptFileCache", "OptFileCacheD", "BtnClean", "AutoTitle",
@@ -2624,6 +2735,7 @@ try {
         if ($script:Remote) { Show-UpdateCard }
         (N "CpuSub").Text = (T "CpuSub") -f [Environment]::ProcessorCount, [Diagnostics.Process]::GetProcesses().Length
         if ($script:TweakRows.Count -gt 0) { Build-TweakList }
+        Update-RestartBar
         if ($script:StartupLoaded) { Build-StartupList } else { (N "SuSummary").Text = T "SuLoading" }
         if ($script:SvcLoaded) { Build-ServiceList } else { (N "SvSummary").Text = T "SvLoading" }
         if ($script:Page -eq "Disk") { Show-Drives }
@@ -2684,7 +2796,9 @@ try {
                 8  { & $snap "3-Memory"; Start-RamClean }
                 12 { & $snap "4-Memory-after"; Show-Page "Startup" }
                 16 { & $snap "5-Startup"; Show-Page "Services" }
-                20 { & $snap "5b-Services"; Show-Page "Disk" }
+                20 { & $snap "5b-Services"; (N "SvFLocked").IsChecked = $true }
+                21 { & $snap "5c-Services-Locked"; $script:RestartNeed = "reboot"; Update-RestartBar; Show-Page "Tweaks" }
+                22 { & $snap "5d-RestartBar"; Show-Page "Disk" }
                 24 { & $snap "6-Disk"; Show-Page "Settings" }
                 25 { & $snap "7-Settings"
                      $script:SnapDlg = New-WoDialog -Title (T "DcConfirmTitle") -Message (((T "DcConfirm") -f "11,51 GB") + (T "DcRecycleConfirm")) -Kind "warn" -Ok (T "DcConfirmOk") -Cancel (T "DlgCancel") -Danger

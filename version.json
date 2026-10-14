@@ -1,7 +1,7 @@
 {
-  "version": "2.2.0",
+  "version": "2.3.0",
   "url": "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1",
-  "notes": "Yeni: Arka plan servisleri modülü, gereksiz başlangıç öğelerini tek tıkla kapatma, tasarıma uygun onay pencereleri. Oyun önceliği hatası düzeltildi.",
+  "notes": "Korumalı servisler ayrı sekmede ve kilitli, tüm servis değişikliklerini eskiye döndürme, yeniden başlatma/oturum kapatma düğmesi.",
   "files": [
     "WindowsOptimizer.ps1",
     "config.json",

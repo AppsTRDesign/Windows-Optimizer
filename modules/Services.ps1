@@ -4,6 +4,32 @@
 
 $WoSvcBackupPath = Join-Path (Split-Path $PSScriptRoot -Parent) "services-backup.json"
 
+# Servisin yapilandirma izni var mi? (yalnizca acmayi dener, hicbir sey degistirmez)
+if (-not ("WoSvc" -as [type])) {
+    Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class WoSvc {
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)] static extern IntPtr OpenSCManager(string m, string d, uint a);
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)] static extern IntPtr OpenService(IntPtr scm, string n, uint a);
+    [DllImport("advapi32.dll")] static extern bool CloseServiceHandle(IntPtr h);
+    public static bool CanConfigure(string name) {
+        IntPtr scm = OpenSCManager(null, null, 0x0001);          // SC_MANAGER_CONNECT
+        if (scm == IntPtr.Zero) return false;
+        try {
+            IntPtr h = OpenService(scm, name, 0x0002);            // SERVICE_CHANGE_CONFIG
+            if (h == IntPtr.Zero) return false;
+            CloseServiceHandle(h);
+            return true;
+        } finally { CloseServiceHandle(scm); }
+    }
+}
+"@
+}
+
+# Kendini koruyan guvenlik yazilimlari: servis izni olsa bile surucu degisikligi engeller
+$WoProtectedVendors = 'Norton|Gen Digital|NortonLifeLock|Symantec|Avast|AVG|Kaspersky|ESET|Bitdefender|McAfee|Malwarebytes|Sophos|Trend Micro|Avira|Panda|F-Secure|Webroot|Comodo|Emsisoft|G DATA'
+
 # Ad -> @(onerilen tip, risk, TR aciklama, EN aciklama)   risk: safe | caution
 $WoServiceKnowledge = @{
     "DiagTrack"        = @("Disabled", "safe", "Telemetri verilerini toplar ve Microsoft'a gönderir.", "Collects and sends telemetry data to Microsoft.")
@@ -50,6 +76,7 @@ function Get-WoServices {
     try { foreach ($p in Get-CimInstance Win32_Process -Property ProcessId, WorkingSetSize) { $procMem[[int]$p.ProcessId] = [double]$p.WorkingSetSize } } catch {}
     $svcPerPid = @{}
     $all = @(Get-CimInstance Win32_Service)
+    $names = @{}; foreach ($s in $all) { $names[$s.Name] = $true }
     foreach ($s in $all) { if ($s.ProcessId) { $svcPerPid[[int]$s.ProcessId]++ } }
 
     foreach ($s in $all) {
@@ -74,6 +101,14 @@ function Get-WoServices {
             $reasonTR = "Güncelleme servisi; uygulama açıldığında güncellemeyi kendisi denetler."
             $reasonEN = "Updater service; the app checks for updates itself when opened."
         }
+        # Kullanici basina servis kopyasi (or. WpnUserService_69cdb): sablonu uzerinden yonetilir
+        $svcType = [Microsoft.Win32.Registry]::GetValue("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\$($s.Name)", "Type", 0)
+        $userInst = (([int]$svcType) -band 0x80) -ne 0
+        $protected = "none"
+        if ($userInst) { $protected = "user" }
+        elseif ($company -match $WoProtectedVendors -or $s.DisplayName -match $WoProtectedVendors) { $protected = "vendor" }
+        elseif (-not [WoSvc]::CanConfigure($s.Name)) { $protected = "acl" }
+        if ($protected -ne "none") { $rec = $null }
         $mode = switch ("$($s.StartMode)") { "Auto" { "Automatic" } "Manual" { "Manual" } "Disabled" { "Disabled" } default { "$($s.StartMode)" } }
         $rank = @{ Automatic = 2; Manual = 1; Disabled = 0 }
         $needs = $rec -and $rank.ContainsKey($mode) -and $rank[$mode] -gt $rank[$rec]
@@ -85,7 +120,7 @@ function Get-WoServices {
             Name = $s.Name; Display = "$($s.DisplayName)"; Description = "$($s.Description)"
             State = "$($s.State)"; StartMode = $mode; Path = $exe; Company = $company; IsMicrosoft = $isMs
             Category = $cat; RecStart = $rec; NeedsChange = $needs; Risk = $risk
-            ReasonTR = $reasonTR; ReasonEN = $reasonEN; Mem = $mem
+            ReasonTR = $reasonTR; ReasonEN = $reasonEN; Mem = $mem; Protected = $protected
             Original = $backup.($s.Name)
         }
     }
@@ -115,4 +150,16 @@ function Restore-WoService([string]$Name) {
     if ($orig -eq "Automatic") { Start-Service -Name $Name -ErrorAction SilentlyContinue }
     $backup.PSObject.Properties.Remove($Name)
     $backup | ConvertTo-Json | Set-Content $WoSvcBackupPath -Encoding UTF8
+}
+
+function Get-WoChangedServices {
+    $backup = Get-WoServiceBackup
+    @($backup.PSObject.Properties | ForEach-Object { [pscustomobject]@{ Name = $_.Name; Original = $_.Value } })
+}
+
+function Restore-AllWoServices {
+    foreach ($c in (Get-WoChangedServices)) {
+        try { Restore-WoService $c.Name; [pscustomobject]@{ Name = $c.Name; Ok = $true } }
+        catch { [pscustomobject]@{ Name = $c.Name; Ok = $false; Err = $_.Exception.Message } }
+    }
 }
