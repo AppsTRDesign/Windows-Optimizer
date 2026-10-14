@@ -180,8 +180,8 @@ $TweakCatalog = @(
        Reg=@( @{P="HKCU:\Control Panel\Desktop"; N="MenuShowDelay"; V="100"; D="400"} ) }
 
     @{ Id="BgApps"; Cat="perf"; Rec=$false
-       TR=@("Mağaza uygulamalarının arka planda çalışmasını engelle","RAM/CPU tasarrufu sağlar. Uyarı: WhatsApp, Telefon Bağlantısı gibi uygulamaların bildirimleri gecikebilir.")
-       EN=@("Block Store apps from running in background","Saves RAM/CPU. Warning: notifications from apps like WhatsApp or Phone Link may be delayed.")
+       TR=@("Mağaza uygulamalarının arka planda çalışmasını engelle","Biraz RAM/CPU tasarrufu sağlar. UYARI: Print Screen tuşu ve Ekran Alıntısı Aracı, Alarmlar, Telefon Bağlantısı ve WhatsApp bildirimleri çalışmayabilir.")
+       EN=@("Block Store apps from running in background","Saves a little RAM/CPU. WARNING: the Print Screen key and Snipping Tool, Alarms, Phone Link and WhatsApp notifications may stop working.")
        Reg=@( @{P="HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications"; N="GlobalUserDisabled"; V=1; D=$null}
               @{P="$POL\Windows\AppPrivacy"; N="LetAppsRunInBackground"; V=2; D=$null} ) }
 

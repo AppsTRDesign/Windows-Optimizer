@@ -27,6 +27,9 @@ $SettingsPath = Join-Path $AppDir "settings.json"
 function Write-WoLog([string]$Msg) {
     try { "[{0:yyyy-MM-dd HH:mm:ss}] {1}" -f (Get-Date), $Msg | Out-File $LogPath -Append -Encoding UTF8 } catch {}
 }
+# Acilis olcumu (yalnizca WO_PROFILE ortam degiskeni varsa gunluge yazar)
+$script:BootClock = [Diagnostics.Stopwatch]::StartNew()
+function Mark-Boot([string]$Phase) { if ($env:WO_PROFILE) { Write-WoLog ("PROFILE {0,6} ms  {1}" -f $script:BootClock.ElapsedMilliseconds, $Phase) } }
 
 . (Join-Path $AppDir "modules\RamCleaner.ps1")
 . (Join-Path $AppDir "modules\Tweaks.ps1")
@@ -40,6 +43,7 @@ function Write-WoLog([string]$Msg) {
 if (-not $Snapshot) { try { [void][WoNative]::ShowWindow([WoNative]::GetConsoleWindow(), 0) } catch {} }
 [void](Enable-WoMemPrivileges)
 
+Mark-Boot "moduller"
 $LocalVersion = "0.0.0"
 try { $LocalVersion = (Get-Content (Join-Path $AppDir "version.json") -Raw -Encoding UTF8 | ConvertFrom-Json).version } catch {}
 
@@ -213,7 +217,7 @@ TR = @{
     ResetDone = "Sıfırlama tamamlandı: {0} ayar geri alındı"; ResetWarn = "{0} ayar geri alındı, {1} başarısız (ayrıntılar günlükte)"
     CloseBusyTitle = "Bir işlem devam ediyor"; CloseBusyMsg = "Şu an bir işlem çalışıyor. Şimdi kapatırsanız yarım kalabilir. Yine de kapatılsın mı?"; CloseBusyOk = "Kapat"
     CleanNoOps = "En az bir temizlik seçeneği işaretleyin"
-    PermWarnTitle = "Donanım erişimi kapatılacak"; PermWarnMsg = "Şu izinler kapatılacak: {0}.`n`nBu izinleri kullanan uygulamalar (Discord, Teams, görüntülü görüşme, hava durumu vb.) çalışmayabilir."
+    PermWarnTitle = "Bazı özellikler etkilenebilir"; PermWarnMsg = "Şu ayarlar uygulanacak: {0}.`n`nBunlara bağlı özellikler (Discord/Teams sesli-görüntülü görüşme, hava durumu, Print Screen ve Ekran Alıntısı Aracı, Mağaza uygulaması bildirimleri) çalışmayabilir."
 }
 EN = @{
     NavGrp_main = "GENERAL"; NavGrp_perf = "PERFORMANCE"; NavGrp_clean = "CLEANUP"; NavGrp_system = "SYSTEM"; NavHome = "Overview"; NavTweaks = "Optimizations"; NavMemory = "Memory (RAM)"; NavSettings = "Settings"
@@ -339,7 +343,7 @@ EN = @{
     ResetDone = "Reset complete: {0} settings restored"; ResetWarn = "{0} settings restored, {1} failed (see log)"
     CloseBusyTitle = "An operation is running"; CloseBusyMsg = "Something is still running. Closing now may leave it unfinished. Close anyway?"; CloseBusyOk = "Close"
     CleanNoOps = "Select at least one cleaning option"
-    PermWarnTitle = "Hardware access will be blocked"; PermWarnMsg = "These permissions will be blocked: {0}.`n`nApps that use them (Discord, Teams, video calls, weather etc.) may stop working."
+    PermWarnTitle = "Some features may be affected"; PermWarnMsg = "These settings will be applied: {0}.`n`nFeatures that depend on them (Discord/Teams calls, weather, Print Screen and Snipping Tool, Store app notifications) may stop working."
 }
 }
 $script:Lang = $Settings.language
@@ -1314,7 +1318,9 @@ $xaml = @'
 '@
 
 try {
+    Mark-Boot "wpf+metinler"
     $window = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader ([xml]$xaml)))
+    Mark-Boot "ana xaml"
     $script:Named = @{}
     $script:Frags = New-Object System.Collections.ArrayList
     function N([string]$Name) {
@@ -1678,7 +1684,7 @@ try {
             if ($want -and -not $cur) { $apply += $t.Id } elseif (-not $want -and $cur) { $revert += $t.Id }
         }
         if (($apply.Count + $revert.Count) -eq 0) { return }
-        $risky = @($apply | Where-Object { $_ -in @("PermLocation", "PermMic", "PermCamera") } | ForEach-Object { (Get-WoTweak $_)[$script:Lang][0] })
+        $risky = @($apply | Where-Object { $_ -in @("PermLocation", "PermMic", "PermCamera", "BgApps") } | ForEach-Object { (Get-WoTweak $_)[$script:Lang][0] })
         if ($risky.Count -gt 0) {
             if (-not (Show-WoDialog -Title (T "PermWarnTitle") -Message ((T "PermWarnMsg") -f ($risky -join ", ")) -Kind "warn" -Ok (T "SvContinue") -Cancel (T "DlgCancel"))) { return }
         }
@@ -2989,6 +2995,7 @@ try {
     foreach ($pf in @("Health", "Monitor", "Game", "Analyzer", "Apps", "Network", "Privacy", "Extras")) {
         $pp = Join-Path $AppDir "pages\$pf.ps1"
         if (Test-Path $pp) { try { . $pp } catch { Write-WoLog "Sayfa yuklenemedi ($pf): $_" } }
+        Mark-Boot "sayfa $pf"
     }
 
     # ================= DİL =================
@@ -3050,10 +3057,15 @@ try {
     (N "LangEN").Add_Checked({ Set-Language "EN" })
 
     # ================= BAŞLAT =================
+    Mark-Boot "olaylar"
     Refresh-TweakStates
+    Mark-Boot "tweak durumlari"
     Apply-Language
+    Mark-Boot "dil"
     Build-TweakList
+    Mark-Boot "tweak listesi"
     Show-Page "Home"
+    Mark-Boot "ana sayfa"
     Set-Status (T "StatusReady") "info"
     if ($Updated) { Set-Status ((T "Updated") -f $LocalVersion) "ok" }
 
@@ -3075,6 +3087,7 @@ try {
     })
 
     $window.Add_ContentRendered({
+        Mark-Boot "pencere cizildi"
         if ($script:TimersStarted) { return }
         $script:TimersStarted = $true
         On-Tick

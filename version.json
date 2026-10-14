@@ -1,7 +1,7 @@
 {
-  "version": "3.1.0",
+  "version": "3.1.1",
   "url": "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1",
-  "notes": "Yeni: Performans izleme (CPU/GPU/RAM/disk/ağ canlı) ve tek tıkla optimizasyon, disk hatası onarma (CHKDSK), DISM hızlı denetim ve ISO ile onarım, NVMe sağlık verileri, anlık disk temizleme. Düzeltmeler: IP yenileme, Disk Analizi.",
+  "notes": "Düzeltme: Arka plan Mağaza uygulamaları ayarı artık Print Screen / Ekran Alıntısı Aracı etkisi konusunda uyarır ve onay ister.",
   "files": [
     "WindowsOptimizer.ps1",
     "config.json",
