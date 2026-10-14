@@ -1,4 +1,4 @@
-# WindowsOptimizer.ps1 - v1.1 (hata yakalama + -NoExit düzeltmesi)
+# WindowsOptimizer.ps1 - v1.2 (banner + footer links + duplicate fix)
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -7,7 +7,6 @@ $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIden
     ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
 if (-not $isAdmin) {
-    # >>> KRİTİK: -NoExit eklendi, hata olsa bile pencere açık kalır <<<
     Start-Process powershell.exe -Verb RunAs -ArgumentList @(
         "-NoProfile","-ExecutionPolicy","Bypass","-NoExit","-File","`"$PSCommandPath`""
     )
@@ -30,29 +29,22 @@ try {
         }
     }
 
-    # --- Modülleri yükle (var mı kontrol et) ---
+    # --- Modülleri yükle ---
     $mods = @("AdsBlocker","FeatureManager","RamCleaner","BackgroundManager")
     foreach ($m in $mods) {
         $p = Join-Path $PSScriptRoot "modules\$m.ps1"
         if (Test-Path $p) { . $p } else { throw "Modül bulunamadı: $p" }
     }
 
-    # --- Logo yolu (boşluklu path güvenli) ---
-    $logoPath = Join-Path $PSScriptRoot ($config.logo -replace '/','\')
-    $logoUri  = $null
-    if (Test-Path $logoPath) {
-        try {
-            $logoUri = New-Object System.Uri($logoPath, [System.UriKind]::Absolute)
-        } catch {
-            Write-Host "Logo URI hatası: $($_.Exception.Message)" -ForegroundColor Yellow
-        }
-    }
+    # --- Görsel yolları ---
+    $logoPath   = Join-Path $PSScriptRoot ($config.logo -replace '/','\')
+    $bannerPath = Join-Path $PSScriptRoot "assets\banner.png"
 
-    # --- XAML ---
+    # --- XAML (BANNER + TEK FOOTER - duplicate yok) ---
     $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Windows Optimizer" Height="760" Width="600"
+        Title="Windows Optimizer" Height="840" Width="620"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" AllowsTransparency="True"
         Background="Transparent" ResizeMode="CanResizeWithGrip">
@@ -179,12 +171,19 @@ try {
 
     <Grid>
       <Grid.RowDefinitions>
-        <RowDefinition Height="78"/>
-        <RowDefinition Height="*"/>
-        <RowDefinition Height="96"/>
+        <RowDefinition Height="Auto"/>  <!-- Banner -->
+        <RowDefinition Height="78"/>    <!-- Header -->
+        <RowDefinition Height="*"/>     <!-- Content -->
+        <RowDefinition Height="96"/>    <!-- Footer -->
       </Grid.RowDefinitions>
 
-      <Border Grid.Row="0" x:Name="HeaderBar" CornerRadius="14,14,0,0">
+      <!-- ================= BANNER ================= -->
+      <Border Grid.Row="0" x:Name="BannerBox" CornerRadius="14,14,0,0" ClipToBounds="True">
+        <Image x:Name="BannerImg" Stretch="UniformToFill"/>
+      </Border>
+
+      <!-- ================= HEADER ================= -->
+      <Border Grid.Row="1" x:Name="HeaderBar">
         <Border.Background>
           <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
             <GradientStop Color="#1E1E38" Offset="0"/>
@@ -208,7 +207,8 @@ try {
         </Grid>
       </Border>
 
-      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,6,0,6">
+      <!-- ================= CONTENT ================= -->
+      <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,6,0,6">
         <StackPanel Margin="26,8,26,8">
 
           <TextBlock Text="REKLAMLAR &amp; GİZLİLİK" Foreground="#7C5CFF" FontSize="11"
@@ -242,7 +242,8 @@ try {
         </StackPanel>
       </ScrollViewer>
 
-      <Border Grid.Row="2" Background="#101020" CornerRadius="0,0,14,14">
+      <!-- ================= FOOTER (TEK - duplicate yok) ================= -->
+      <Border Grid.Row="3" Background="#101020" CornerRadius="0,0,14,14">
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
@@ -260,14 +261,7 @@ try {
             <Button x:Name="BtnWebsite"   Content="Website"   Style="{StaticResource LinkBtn}"/>
           </StackPanel>
         </Grid>
-      </Border>	  
-    <!-- FOOTER LINKS -->
-    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
-      <TextBlock x:Name="TxtAuthor" Foreground="#606080" FontSize="11" VerticalAlignment="Center" Margin="0,0,12,0"/>
-      <Button x:Name="BtnGithub"    Content="GitHub"    Foreground="#9C8CFF" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="0,0,12,0"/>
-      <Button x:Name="BtnInstagram" Content="Instagram" Foreground="#9C8CFF" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="0,0,12,0"/>
-      <Button x:Name="BtnWebsite"   Content="Website"   Foreground="#9C8CFF" Background="Transparent" BorderThickness="0" Cursor="Hand"/>
-    </StackPanel>	   
+      </Border>
     </Grid>
   </Border>
 </Window>
@@ -278,27 +272,45 @@ try {
 
     function N($n) { $window.FindName($n) }
 
-    # Logo yükle (güvenli)
-    if ($logoUri) {
+    # ---- Logo yükle ----
+    if (Test-Path $logoPath) {
         try {
             $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
             $bmp.BeginInit()
-            $bmp.UriSource   = $logoUri
+            $bmp.UriSource   = New-Object System.Uri($logoPath, [System.UriKind]::Absolute)
             $bmp.CacheOption = "OnLoad"
             $bmp.EndInit()
             (N "LogoImg").Source = $bmp
-        } catch {
-            Write-Host "Logo yüklenemedi: $($_.Exception.Message)" -ForegroundColor Yellow
-        }
+        } catch { Write-Host "Logo yüklenemedi: $($_.Exception.Message)" -ForegroundColor Yellow }
     }
 
-    (N "SubTitle").Text     = "v1.1  -  Modüler Windows 10/11 Tweaker"
-    (N "AuthorLabel").Text  = "by $($config.author)"
+    # ---- Banner yükle ----
+    if (Test-Path $bannerPath) {
+        try {
+            $bBanner = New-Object System.Windows.Media.Imaging.BitmapImage
+            $bBanner.BeginInit()
+            $bBanner.UriSource   = New-Object System.Uri($bannerPath, [System.UriKind]::Absolute)
+            $bBanner.CacheOption = "OnLoad"
+            $bBanner.EndInit()
+            (N "BannerImg").Source = $bBanner
+        } catch {
+            Write-Host "Banner yüklenemedi: $($_.Exception.Message)" -ForegroundColor Yellow
+            (N "BannerBox").Visibility = "Collapsed"
+        }
+    } else {
+        # Banner yoksa satırı gizle
+        (N "BannerBox").Visibility = "Collapsed"
+    }
 
+    (N "SubTitle").Text    = "v1.2  -  Modüler Windows 10/11 Tweaker"
+    (N "AuthorLabel").Text = "by $($config.author)"
+
+    # ---- Pencere kontrolleri ----
     (N "HeaderBar").Add_MouseLeftButtonDown({ try { $window.DragMove() } catch {} })
     (N "BtnMin").Add_Click({ $window.WindowState = "Minimized" })
     (N "BtnClose").Add_Click({ $window.Close() })
 
+    # ---- Link butonları (TEK SEFER) ----
     foreach ($pair in @(@("BtnGithub","github"), @("BtnInstagram","instagram"), @("BtnWebsite","website"))) {
         $btn = N $pair[0]; $url = $config.($pair[1])
         if ($url -and $url -ne "#") {
@@ -307,6 +319,7 @@ try {
         } else { $btn.Visibility = "Collapsed" }
     }
 
+    # ---- Apply ----
     $status = N "StatusText"
 
     $actionMap = [ordered]@{
@@ -354,34 +367,14 @@ try {
             $status.Foreground = "#F59E0B"
         }
     })
-	
-# Config linkleri
-$cfgPath = Join-Path $PSScriptRoot "config.json"
-if (Test-Path $cfgPath) {
-    $cfg = Get-Content $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    (N "TxtAuthor").Text = "by $($cfg.author)"
-    foreach ($pair in @(@("BtnGithub","github"), @("BtnInstagram","instagram"), @("BtnWebsite","website"))) {
-        $btn = N $pair[0]; $url = $cfg.($pair[1])
-        if ($url -and $url -ne "#") {
-            $u = $url
-            $btn.Add_Click({ Start-Process $u }.GetNewClosure())
-        } else { $btn.Visibility = "Collapsed" }
-    }
-}	
 
     $window.ShowDialog() | Out-Null
 }
 catch {
     $err = "HATA: $($_.Exception.Message)`r`n`r`nSATIR: $($_.InvocationInfo.ScriptLineNumber)`r`n`r`nSTACK:`r`n$($_.ScriptStackTrace)"
-    try {
-        [System.IO.File]::WriteAllText($logPath, $err, [System.Text.Encoding]::UTF8)
-    } catch {}
-
-    try {
-        [System.Windows.MessageBox]::Show($err, "Windows Optimizer - Hata", "OK", "Error") | Out-Null
-    } catch {
-        Write-Host $err -ForegroundColor Red
-    }
+    try { [System.IO.File]::WriteAllText($logPath, $err, [System.Text.Encoding]::UTF8) } catch {}
+    try { [System.Windows.MessageBox]::Show($err, "Windows Optimizer - Hata", "OK", "Error") | Out-Null }
+    catch { Write-Host $err -ForegroundColor Red }
     Write-Host ""
     Write-Host "Detay log: $logPath" -ForegroundColor Yellow
     Read-Host "Kapatmak için Enter'a basın"
