@@ -183,14 +183,46 @@ function Get-WoRegValue([string]$Path, [string]$Name) {
     try { return (Get-ItemProperty -LiteralPath $Path -Name $Name -ErrorAction Stop).$Name } catch { return $null }
 }
 
-function Set-WoRegValue([string]$Path, [string]$Name, $Value) {
+# Yedek yol: WMI StdRegProv. Bazi anahtarlar (or. Widgets/Dsh) UCPD surucusu tarafindan
+# powershell.exe/reg.exe icin kilitlenir; yazmayi WmiPrvSE yaptigi icin engele takilmaz.
+function Set-WoRegValueWmi([string]$Path, [string]$Name, $Value) {
+    $hive = if ($Path -like "HKLM:*") { [uint32]2147483650 } else { [uint32]2147483649 }
+    $sub  = $Path -replace '^HK(LM|CU):\\', ''
+    $base = @{ hDefKey = $hive; sSubKeyName = $sub }
+    $cim  = @{ Namespace = "root/default"; ClassName = "StdRegProv"; ErrorAction = "Stop" }
     if ($null -eq $Value) {
-        if (Test-Path -LiteralPath $Path) { Remove-ItemProperty -LiteralPath $Path -Name $Name -ErrorAction SilentlyContinue }
+        $r = Invoke-CimMethod @cim -MethodName DeleteValue -Arguments ($base + @{ sValueName = $Name })
+        if ($r.ReturnValue -notin 0, 2) { throw "WMI DeleteValue: $($r.ReturnValue)" }   # 2 = zaten yok
         return
     }
-    if (-not (Test-Path -LiteralPath $Path)) { New-Item -Path $Path -Force | Out-Null }
-    $type = if ($Value -is [string]) { "String" } else { "DWord" }
-    New-ItemProperty -LiteralPath $Path -Name $Name -Value $Value -PropertyType $type -Force | Out-Null
+    [void](Invoke-CimMethod @cim -MethodName CreateKey -Arguments $base)
+    $r = if ($Value -is [string]) {
+        Invoke-CimMethod @cim -MethodName SetStringValue -Arguments ($base + @{ sValueName = $Name; sValue = $Value })
+    } else {
+        Invoke-CimMethod @cim -MethodName SetDWORDValue -Arguments ($base + @{ sValueName = $Name; uValue = [uint32]$Value })
+    }
+    if ($r.ReturnValue -ne 0) { throw "WMI SetValue: $($r.ReturnValue)" }
+}
+
+function Set-WoRegValue([string]$Path, [string]$Name, $Value) {
+    try {
+        if ($null -eq $Value) {
+            if ($null -ne (Get-WoRegValue $Path $Name)) { Remove-ItemProperty -LiteralPath $Path -Name $Name -ErrorAction Stop }
+        } else {
+            if (-not (Test-Path -LiteralPath $Path)) { New-Item -Path $Path -Force -ErrorAction Stop | Out-Null }
+            $type = if ($Value -is [string]) { "String" } else { "DWord" }
+            New-ItemProperty -LiteralPath $Path -Name $Name -Value $Value -PropertyType $type -Force -ErrorAction Stop | Out-Null
+        }
+    } catch {
+        $first = $_.Exception.Message
+        try { Set-WoRegValueWmi $Path $Name $Value }
+        catch { throw "$Path\$Name : $first (WMI: $($_.Exception.Message))" }
+    }
+    # Dogrula: yazilan deger gercekten yerinde mi?
+    $now = Get-WoRegValue $Path $Name
+    if (($null -eq $Value -and $null -ne $now) -or ($null -ne $Value -and "$now" -ne "$Value")) {
+        throw "$Path\$Name : deger yazilamadi"
+    }
 }
 
 function Test-WoTweak($Tweak) {

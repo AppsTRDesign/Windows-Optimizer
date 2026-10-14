@@ -1270,6 +1270,10 @@ try {
             $restarts = @($out | Where-Object { $_.Ok } | ForEach-Object { (Get-WoTweak $_.Id).Restart } | Where-Object { $_ })
             if ($restarts -contains "explorer") { (N "RestartBar").Visibility = "Visible" }
             $msg = if ($fail.Count -eq 0 -and -not $err) { (T "ApplyOK") -f $ok } else { (T "ApplyWarn") -f $ok, [Math]::Max(1, $fail.Count) }
+            if ($fail.Count -gt 0) {
+                $names = $fail | ForEach-Object { (Get-WoTweak $_.Id)[$script:Lang][0] }
+                $msg += " (" + ($names -join ", ") + ")"
+            }
             if ($restarts -contains "logoff") { $msg += T "LogoffHint" }
             Set-Status $msg $(if ($fail.Count -eq 0 -and -not $err) { "ok" } else { "warn" })
         }
@@ -1361,7 +1365,7 @@ try {
         $pct = 0
         if ($script:CpuPrev) {
             $dTotal = $cur[1] - $script:CpuPrev[1]; $dIdle = $cur[0] - $script:CpuPrev[0]
-            if ($dTotal -gt 0) { $pct = [Math]::Max(0, [Math]::Min(100, 100 * (1 - $dIdle / $dTotal))) }
+            if ($dTotal -gt 0) { $pct = [Math]::Max([double]0, [Math]::Min([double]100, 100 * (1 - $dIdle / $dTotal))) }
         }
         $script:CpuPrev = $cur
         return $pct
@@ -1424,7 +1428,7 @@ try {
             [void]$c.Children.Add($ln)
             $lbl = New-Tb ("{0:N0} GB" -f ($total * (4 - $i) / 4 / 1GB)) 10.5 "#6A6A86"
             $lbl.TextWrapping = "NoWrap"
-            [Windows.Controls.Canvas]::SetLeft($lbl, 0); [Windows.Controls.Canvas]::SetTop($lbl, [Math]::Max(0, $y - 8))
+            [Windows.Controls.Canvas]::SetLeft($lbl, 0); [Windows.Controls.Canvas]::SetTop($lbl, [Math]::Max([double]0, $y - 8))
             [void]$c.Children.Add($lbl)
         }
 
@@ -1566,7 +1570,7 @@ try {
             $failed = @($r.Codes.Keys | Where-Object { $r.Codes[$_] -ne 0 } | ForEach-Object { "{0} (0x{1:X8})" -f $_, $r.Codes[$_] })
             $prefix = if ($script:CleanAuto) { T "CleanAuto" } else { "" }
             if ($failed.Count -gt 0) { Set-Status ($prefix + ((T "CleanWarn") -f ($failed -join ", "))) "warn" }
-            else { Set-Status ($prefix + ((T "CleanOK") -f (Fmt-GB ([Math]::Max(0, $gain))), $r.Ms)) "ok" }
+            else { Set-Status ($prefix + ((T "CleanOK") -f (Fmt-GB ([Math]::Max([double]0, $gain))), $r.Ms)) "ok" }
             Draw-MemChart
             if ($script:Page -eq "Memory") { Refresh-ProcList }
         }
