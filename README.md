@@ -19,5 +19,12 @@ A modular, open-source optimization tool for Windows 10/11. Disable ads, manage 
 
 Open **PowerShell as Administrator** and run:
 
+# Install
 ```powershell
 irm https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1 | iex
+
+# Uninstall
+```powershell
+Remove-Item "$env:USERPROFILE\Windows-Optimizer" -Recurse -Force -ErrorAction SilentlyContinue
+```powershell
+Remove-Item "$env:USERPROFILE\Desktop\Windows Optimizer.lnk" -Force -ErrorAction SilentlyContinue
