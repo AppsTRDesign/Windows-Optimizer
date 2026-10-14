@@ -13,6 +13,7 @@ $files = @(
   "WindowsOptimizer.ps1",
   "config.json",
   "assets/logo.png",
+  "assets/banner.png",
   "modules/AdsBlocker.ps1",
   "modules/FeatureManager.ps1",
   "modules/RamCleaner.ps1",
