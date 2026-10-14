@@ -1,5 +1,15 @@
 {
-  "version": "1.4.0",
+  "version": "2.0.0",
   "url": "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1",
-  "notes": "Revert kaldırıldı, update sistemi düzeltildi"
+  "notes": "Yeni arayüz, canlı RAM grafiği, 26 optimizasyon (durum okuma + geri alma), ilerlemeli güvenli güncelleme.",
+  "files": [
+    "WindowsOptimizer.ps1",
+    "config.json",
+    "version.json",
+    "assets/logo.png",
+    "assets/banner.png",
+    "modules/Tweaks.ps1",
+    "modules/RamCleaner.ps1",
+    "modules/Updater.ps1"
+  ]
 }

@@ -1,32 +1,110 @@
 # Windows Optimizer
 
-[🇹🇷 Türkçe](README.tr.md) | English
-
-A modular, open-source optimization tool for Windows 10/11. Disable ads, manage unnecessary features, clean RAM, and control background processes — all with a single click.
+[🇹🇷 Türkçe](README.tr.md) | **🇬🇧 English**
 
 ![Windows Optimizer](assets/banner.png)
 
+A modular, open-source performance & privacy tool for Windows 10/11. It disables ads and telemetry, trims background activity and cleans RAM, with a live memory graph so you can **see** the effect of every optimization.
+
+> **Version 2.0** — new interface, live RAM monitoring, 26 optimizations that show their real state and can be reverted, and a safe in-app updater with a progress bar.
+
 ## ✨ Features
 
-| Module | Description |
-|--------|-------------|
-| 🛡️ **Ads Blocker** | Disables ads in File Explorer, Lock Screen, Start Menu, Settings, and Notifications |
-| 🔍 **Feature Manager** | Toggles Bing Search, Telemetry, Cortana, Consumer Features |
-| 🧠 **RAM Cleaner** | Clears standby memory using Microsoft RAMMap |
-| ⚙️ **Background Manager** | Disables unnecessary background apps |
+| Page | What it does |
+|------|--------------|
+| 🏠 **Overview** | Live CPU / RAM / disk usage with sparklines, system info, optimization score and quick actions |
+| ⚡ **Optimizations** | 26 tweaks in 4 categories. Each setting's **current state is read from the system**; turning it off restores the Windows default |
+| 🧠 **Memory (RAM)** | Live 2-minute stacked graph (in use / modified / standby), one-click cleaning, before/after results, top memory consumers, auto-clean by usage threshold |
+| ⚙️ **Settings** | Language (TR/EN), update check, shortcut repair, system restore point, log file |
 
-## 🚀 One-Click Install
+### Optimization categories
 
-Open **PowerShell as Administrator** and run:
+- **Ads & Privacy:** File Explorer ads, lock screen tips, Settings suggestions, Windows tips, Welcome Experience, "Finish setting up" nag, Start menu ads & silent app installs, suggested notifications, advertising ID, tailored experiences, activity history
+- **Search, Edge & Copilot:** Bing results in Start search, Edge search bar, Edge suggestions/shopping/sidebar, Windows Copilot, Widgets / News and interests
+- **System & Telemetry:** Telemetry (incl. DiagTrack service), Cortana, consumer features, feedback requests, Windows Error Reporting
+- **Performance:** Edge background mode & Startup Boost, startup app delay, menu show delay, Xbox Game DVR, background Store apps
 
-# Install
+Settings marked **RECOMMENDED** are safe for most users. **Apply Recommended** on the Overview page enables all of them at once.
+
+### RAM cleaning
+
+Uses the same Windows APIs as RAMMap / MemReduct; no external tools are downloaded.
+
+| Option | Effect |
+|--------|--------|
+| Empty working sets | Removes pages that processes are not using |
+| Flush modified list | Writes pending pages to disk and frees them |
+| Purge standby list | Clears the whole cache (biggest effect) |
+| Low-priority standby only | Gentler; keeps frequently used cache |
+| Flush system file cache | Resets the file system cache |
+
+> Windows uses free RAM as cache (standby), which is normal. Cleaning is most useful before launching a game or heavy app, or when memory is tight.
+
+## 🚀 One-click install
+
+Open **PowerShell** and run:
+
 ```powershell
 irm https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1 | iex
 ```
-# Uninstall
+
+The installer:
+- downloads every file to a temporary folder and verifies it before touching your installation,
+- installs to `%USERPROFILE%\Windows-Optimizer` (your `settings.json` is preserved),
+- creates **Desktop** and **Start menu** shortcuts that run as administrator without a console window,
+- starts the app.
+
+## 🔄 Updating
+
+When a new version is available, a card appears in the sidebar. Click **Update now**:
+
+1. Files are downloaded with a progress bar and verified,
+2. the app closes, the new files are copied over the old ones,
+3. shortcuts are recreated and the app restarts automatically.
+
+If anything fails, your current installation is left untouched. The update log is written to `%TEMP%\WindowsOptimizer-update.log`.
+
+## 🗑️ Uninstall
+
 ```powershell
 Remove-Item "$env:USERPROFILE\Windows-Optimizer" -Recurse -Force -ErrorAction SilentlyContinue
 ```
 ```powershell
-Remove-Item "$env:USERPROFILE\Desktop\Windows Optimizer.lnk" -Force -ErrorAction SilentlyContinue
+Remove-Item "$([Environment]::GetFolderPath('Desktop'))\Windows Optimizer.lnk", "$([Environment]::GetFolderPath('Programs'))\Windows Optimizer.lnk" -Force -ErrorAction SilentlyContinue
 ```
+
+Optimizations stay applied after uninstalling. To revert them, turn the toggles off in the app before uninstalling.
+
+## 📁 Project structure
+
+```
+Windows-Optimizer/
+├── WindowsOptimizer.ps1     # Main app (WPF interface)
+├── install.ps1              # Installer / updater for older versions
+├── version.json             # Version, release notes, file list
+├── config.json              # Author and links
+├── assets/
+│   ├── logo.png
+│   └── banner.png
+└── modules/
+    ├── Tweaks.ps1           # Optimization catalog + apply/revert engine
+    ├── RamCleaner.ps1       # Live memory measurement + cleaning (native API)
+    └── Updater.ps1          # Version check, download, shortcuts
+```
+
+## ⚠️ Notes
+
+- Requires Windows 10/11 and Windows PowerShell 5.1 (built in). The app asks for administrator rights.
+- Creating a **system restore point** (Overview → Quick Actions) before making changes is recommended.
+- Some settings take effect after restarting Explorer (the app offers this) or after signing out.
+- Logs: `%TEMP%\WindowsOptimizer.log`
+
+## 🔗 Links
+
+- **GitHub:** [AppsTRDesign](https://github.com/AppsTRDesign)
+- **Instagram:** [@oztasonur1](https://instagram.com/oztasonur1)
+- **Website:** [worldofwar.site](https://worldofwar.site)
+
+---
+
+Made by **AppsTRDesign**
