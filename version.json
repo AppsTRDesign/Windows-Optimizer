@@ -1,7 +1,7 @@
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "url": "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1",
-  "notes": "Yeni: Başlangıç yöneticisi, Disk temizleme, Gizlilik izinleri (konum/mikrofon/kamera), Oyun performansı kategorisi, 43 optimizasyon.",
+  "notes": "Yeni: Arka plan servisleri modülü, gereksiz başlangıç öğelerini tek tıkla kapatma, tasarıma uygun onay pencereleri. Oyun önceliği hatası düzeltildi.",
   "files": [
     "WindowsOptimizer.ps1",
     "config.json",
@@ -12,6 +12,7 @@
     "modules/RamCleaner.ps1",
     "modules/Updater.ps1",
     "modules/Startup.ps1",
-    "modules/DiskCleaner.ps1"
+    "modules/DiskCleaner.ps1",
+    "modules/Services.ps1"
   ]
 }

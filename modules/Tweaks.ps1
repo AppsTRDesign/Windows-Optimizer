@@ -206,42 +206,42 @@ $TweakCatalog = @(
 
     # ---------------- GİZLİLİK İZİNLERİ ----------------
     @{ Id="PermLocation"; Cat="perm"; Rec=$false
-       TR=@("Konum erişimini kapat","Uygulamaların ve Windows'un konumunuza erişimini engeller. Hava durumu, saat dilimi ve Cihazımı Bul etkilenir.")
-       EN=@("Disable location access","Blocks apps and Windows from accessing your location. Weather, time zone and Find My Device are affected.")
+       TR=@("Konum erişimi","Uygulamaların ve Windows'un konumunuza erişimi. Kapatılırsa hava durumu, saat dilimi ve Cihazımı Bul etkilenir.")
+       EN=@("Location access","Apps and Windows can access your location. If turned off, weather, time zone and Find My Device are affected.")
        Reg=@( @{P="$CAM\location"; N="Value"; V="Deny"; D="Allow"}
               @{P="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"; N="Value"; V="Deny"; D="Allow"} ) }
 
     @{ Id="PermMic"; Cat="perm"; Rec=$false
-       TR=@("Mikrofon erişimini kapat","Tüm uygulamaların mikrofona erişimini engeller. Uyarı: Discord, Teams, oyun içi sesli sohbet çalışmaz.")
-       EN=@("Disable microphone access","Blocks all apps from the microphone. Warning: Discord, Teams and in-game voice chat stop working.")
+       TR=@("Mikrofon erişimi","Uygulamaların mikrofona erişimi. Kapatılırsa Discord, Teams ve oyun içi sesli sohbet çalışmaz.")
+       EN=@("Microphone access","Apps can use the microphone. If turned off, Discord, Teams and in-game voice chat stop working.")
        Reg=@( @{P="$CAM\microphone"; N="Value"; V="Deny"; D="Allow"}
               @{P="$CAM\microphone\NonPackaged"; N="Value"; V="Deny"; D="Allow"} ) }
 
     @{ Id="PermCamera"; Cat="perm"; Rec=$false
-       TR=@("Kamera erişimini kapat","Tüm uygulamaların kameraya erişimini engeller. Görüntülü görüşme uygulamaları çalışmaz.")
-       EN=@("Disable camera access","Blocks all apps from the camera. Video call apps stop working.")
+       TR=@("Kamera erişimi","Uygulamaların kameraya erişimi. Kapatılırsa görüntülü görüşme uygulamaları çalışmaz.")
+       EN=@("Camera access","Apps can use the camera. If turned off, video call apps stop working.")
        Reg=@( @{P="$CAM\webcam"; N="Value"; V="Deny"; D="Allow"}
               @{P="$CAM\webcam\NonPackaged"; N="Value"; V="Deny"; D="Allow"} ) }
 
     @{ Id="PermData"; Cat="perm"; Rec=$true
-       TR=@("Kişisel verilere uygulama erişimini kapat","Kişiler, takvim, arama geçmişi, e-posta, mesajlar, görevler, hesap bilgisi ve radyolara (Bluetooth) uygulama erişimini kapatır.")
-       EN=@("Disable app access to personal data","Turns off app access to contacts, calendar, call history, email, messages, tasks, account info and radios.")
+       TR=@("Kişisel verilere uygulama erişimi","Uygulamaların kişiler, takvim, arama geçmişi, e-posta, mesajlar, görevler, hesap bilgisi ve radyolara (Bluetooth) erişimi.")
+       EN=@("App access to personal data","App access to contacts, calendar, call history, email, messages, tasks, account info and radios.")
        Reg=@( "contacts","appointments","phoneCall","phoneCallHistory","email","chat","userDataTasks","userAccountInformation","radios" |
               ForEach-Object { @{P="$CAM\$_"; N="Value"; V="Deny"; D="Allow"} } ) }
 
     @{ Id="PermDiag"; Cat="perm"; Rec=$true
-       TR=@("Uygulama tanılama erişimini kapat","Uygulamaların diğer uygulamalar hakkında tanılama bilgisi toplamasını engeller.")
-       EN=@("Disable app diagnostics access","Prevents apps from reading diagnostic info about other apps.")
+       TR=@("Uygulama tanılama erişimi","Uygulamaların diğer uygulamalar hakkında tanılama bilgisi okuması.")
+       EN=@("App diagnostics access","Apps can read diagnostic info about other apps.")
        Reg=@( @{P="$CAM\appDiagnostics"; N="Value"; V="Deny"; D="Allow"} ) }
 
     @{ Id="PermSpeech"; Cat="perm"; Rec=$true
-       TR=@("Çevrimiçi konuşma tanımayı kapat","Ses verilerinizin Microsoft bulutuna gönderilmesini durdurur.")
-       EN=@("Disable online speech recognition","Stops sending your voice data to Microsoft's cloud.")
+       TR=@("Çevrimiçi konuşma tanıma","Ses verileriniz tanıma için Microsoft bulutuna gönderilir.")
+       EN=@("Online speech recognition","Your voice data is sent to Microsoft's cloud for recognition.")
        Reg=@( @{P="HKCU:\SOFTWARE\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy"; N="HasAccepted"; V=0; D=$null} ) }
 
     @{ Id="PermInking"; Cat="perm"; Rec=$true
-       TR=@("Yazma ve mürekkep kişiselleştirmesini kapat","Klavye/kalem girişinizden kişisel sözlük oluşturulmasını ve gönderilmesini durdurur.")
-       EN=@("Disable inking & typing personalization","Stops building and sending a personal dictionary from your typing/pen input.")
+       TR=@("Yazma ve mürekkep kişiselleştirmesi","Klavye/kalem girişinizden kişisel sözlük oluşturulur ve Microsoft'a gönderilir.")
+       EN=@("Inking & typing personalization","A personal dictionary is built from your typing/pen input and sent to Microsoft.")
        Reg=@( @{P="HKCU:\SOFTWARE\Microsoft\InputPersonalization"; N="RestrictImplicitInkCollection"; V=1; D=0}
               @{P="HKCU:\SOFTWARE\Microsoft\InputPersonalization"; N="RestrictImplicitTextCollection"; V=1; D=0}
               @{P="HKCU:\SOFTWARE\Microsoft\InputPersonalization\TrainedDataStore"; N="HarvestContacts"; V=0; D=1}
@@ -258,7 +258,7 @@ $TweakCatalog = @(
        TR=@("Oyunlara yüksek CPU/GPU önceliği ver","MMCSS ile oyun iş parçacıklarına öncelik verir, arka plan ağ kısıtlamasını kaldırır.")
        EN=@("Give games high CPU/GPU priority","Prioritizes game threads via MMCSS and removes background network throttling.")
        Reg=@( @{P="$MMCSS"; N="SystemResponsiveness"; V=10; D=20}
-              @{P="$MMCSS"; N="NetworkThrottlingIndex"; V=-1; D=10}
+              @{P="$MMCSS"; N="NetworkThrottlingIndex"; V=[uint32]4294967295; D=10}
               @{P="$MMCSS\Tasks\Games"; N="GPU Priority"; V=8; D=8}
               @{P="$MMCSS\Tasks\Games"; N="Priority"; V=6; D=2}
               @{P="$MMCSS\Tasks\Games"; N="Scheduling Category"; V="High"; D="Medium"}
@@ -435,7 +435,7 @@ function Set-WoRegValueGpo([string]$Path, [string]$Name, $Value) {
     Start-Process gpupdate.exe -ArgumentList "/target:$target", "/force" -WindowStyle Hidden -Wait
     for ($i = 0; $i -lt 20; $i++) {
         $now = Get-WoRegValue $Path $Name
-        if (($null -eq $Value -and $null -eq $now) -or ($null -ne $Value -and "$now" -eq "$Value")) { return }
+        if (($null -eq $Value -and $null -eq $now) -or ($null -ne $Value -and (Test-WoRegEqual $now $Value))) { return }
         Start-Sleep -Milliseconds 500
     }
 }
@@ -460,16 +460,23 @@ function Set-WoRegValue([string]$Path, [string]$Name, $Value) {
     }
     # Dogrula: yazilan deger gercekten yerinde mi?
     $now = Get-WoRegValue $Path $Name
-    if (($null -eq $Value -and $null -ne $now) -or ($null -ne $Value -and "$now" -ne "$Value")) {
-        throw "$Path\$Name : deger yazilamadi (UCPD korumasi olabilir)"
+    if (($null -eq $Value -and $null -ne $now) -or ($null -ne $Value -and -not (Test-WoRegEqual $now $Value))) {
+        throw "$Path\$Name : deger yazildi ama dogrulanamadi (okunan: $now, beklenen: $Value)"
     }
+}
+
+# DWORD'ler okunurken Int32 ya da UInt32 donebilir (-1 = 4294967295); bit degeriyle karsilastir
+function Test-WoRegEqual($A, $B) {
+    if ($null -eq $A -or $null -eq $B) { return $false }
+    $num = { param($x) $x -is [int] -or $x -is [uint32] -or $x -is [long] -or $x -is [int16] -or $x -is [byte] }
+    if ((& $num $A) -and (& $num $B)) { return ([int64]$A -band 4294967295L) -eq ([int64]$B -band 4294967295L) }
+    return "$A" -eq "$B"
 }
 
 function Test-WoTweak($Tweak) {
     if ($Tweak.Test) { try { if (-not (& $Tweak.Test)) { return $false } } catch { return $false } }
     foreach ($r in $Tweak.Reg) {
-        $cur = Get-WoRegValue $r.P $r.N
-        if ($null -eq $cur -or "$cur" -ne "$($r.V)") { return $false }
+        if (-not (Test-WoRegEqual (Get-WoRegValue $r.P $r.N) $r.V)) { return $false }
     }
     foreach ($s in $Tweak.Svc) {
         $svc = Get-Service -Name $s.N -ErrorAction SilentlyContinue

@@ -7,6 +7,12 @@ $WoApprovedRoot = "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApp
 # Bilinen sistem / guvenlik bilesenleri: kapatilabilir ama uyari gosterilir
 $WoStartupCritical = @("SecurityHealth", "Windows Defender", "MsMpEng", "RtkAudUService", "RTHDVCPL", "igfx", "Synaptics", "ETDCtrl", "Elan")
 
+# Kapatilmasi guvenli, acilisi yavaslatan bilinen uygulamalar (gerektiginde elle acilirlar)
+$WoStartupJunk = @("CopilotAutoLaunch", "mscopilot", "MicrosoftEdgeAutoLaunch", "Teams", "Spotify", "Steam", "EADM", "EpicGamesLauncher",
+    "RiotClient", "Riot Client", "Discord", "NortonBrowserAutoLaunch", "AdobeAAMUpdater", "Adobe Acrobat Synchronizer", "SunJavaUpdateSched",
+    "Opera scheduled", "Opera Browser Assistant", "GoogleUpdate", "CCleaner", "Skype", "iTunesHelper", "Lync", "Battle.net",
+    "Ubisoft", "GalaxyClient", "Overwolf", "Wallpaper Engine", "Zoom", "WhatsApp", "Telegram")
+
 function Split-WoCommand([string]$Cmd) {
     if (-not $Cmd) { return "" }
     $c = [Environment]::ExpandEnvironmentVariables($Cmd.Trim())
@@ -53,11 +59,12 @@ function Get-WoStartupItems {
         param($Name, $Command, $Path, $Source, $Hive, $Sub, $ApprovedName, $TaskPath, $Enabled)
         $meta = Get-WoFileMeta $Path
         $crit = [bool]($WoStartupCritical | Where-Object { $Name -like "*$_*" -or $Path -like "*$_*" })
+        $junk = (-not $crit) -and [bool]($WoStartupJunk | Where-Object { $Name -like "*$_*" -or $Path -like "*$_*" })
         [void]$items.Add([pscustomobject]@{
             Id = "$Source|$Hive|$Sub|$ApprovedName|$TaskPath"; Name = $Name; Command = $Command; Path = $Path
             Publisher = $meta.Publisher; Description = $meta.Description; Exists = $meta.Exists
             Source = $Source; Hive = $Hive; Sub = $Sub; ApprovedName = $ApprovedName; TaskPath = $TaskPath
-            Enabled = $Enabled; Critical = $crit
+            Enabled = $Enabled; Critical = $crit; Junk = $junk
         })
     }
 

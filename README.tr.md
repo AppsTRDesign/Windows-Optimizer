@@ -6,7 +6,7 @@
 
 Windows 10/11 için modüler, açık kaynaklı bir performans ve gizlilik aracı. Reklamları ve telemetriyi kapatır, arka plan etkinliğini azaltır ve RAM'i temizler. Canlı bellek grafiği sayesinde her optimizasyonun etkisini **gözünüzle görebilirsiniz**.
 
-> **Sürüm 2.1**: Başlangıç yöneticisi, disk temizleyici, gizlilik izinleri ve oyun performansı kategorileriyle 43 optimizasyon, canlı RAM izleme, ilerleme çubuklu güvenli güncelleme.
+> **Sürüm 2.2**: Servis analizi, başlangıç yöneticisi, disk temizleyici, gizlilik izinleri ve oyun performansı kategorileriyle 43 optimizasyon, canlı RAM izleme, ilerleme çubuklu güvenli güncelleme.
 
 ## ✨ Özellikler
 
@@ -16,6 +16,7 @@ Windows 10/11 için modüler, açık kaynaklı bir performans ve gizlilik aracı
 | ⚡ **Optimizasyonlar** | 6 kategoride 43 ayar. Her ayarın **mevcut durumu sistemden okunur**; kapatırsanız Windows varsayılanına döner |
 | 🧠 **Bellek (RAM)** | Son 2 dakikanın canlı grafiği (kullanımda / değiştirilmiş / standby), tek tıkla temizlik, önce/sonra sonuçları, en çok bellek kullanan uygulamalar, kullanım eşiğine göre otomatik temizlik |
 | 🚀 **Başlangıç** | Windows açılırken çalışan tüm programlar (kayıt defteri, başlangıç klasörü, zamanlanmış görevler); simge, yayıncı ve komut satırıyla listelenir, tek tıkla açılıp kapatılır. Görev Yöneticisi ile uyumludur |
+| 🔧 **Servisler** | 300 Windows servisini tarar; Windows bileşeni, üçüncü parti ve gereksiz olanları ayırır. Her öneriyi açıklar, güvenli olanları tek tıkla uygular, tüm değişiklikler geri alınabilir |
 | 🧹 **Disk Temizleme** | Tüm disklerin kapasite kartları; geçici dosyalar, Windows Update önbelleği, tarayıcı önbellekleri, hata dökümleri, shader önbelleği, Geri Dönüşüm Kutusu taranır, boyutları gösterilir, seçilenler temizlenir |
 | ⚙️ **Ayarlar** | Dil (TR/EN), güncelleme denetimi, kısayol onarma, sistem geri yükleme noktası, günlük dosyası |
 
@@ -95,6 +96,7 @@ Windows-Optimizer/
     ├── RamCleaner.ps1       # Canlı bellek ölçümü + temizlik (yerel API)
     ├── Startup.ps1          # Başlangıç uygulamaları yöneticisi
     ├── DiskCleaner.ps1      # Disk kapasitesi + gereksiz dosya temizliği
+    ├── Services.ps1         # Arka plan servisleri analizi
     └── Updater.ps1          # Sürüm denetimi, indirme, kısayollar
 ```
 

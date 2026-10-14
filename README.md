@@ -6,7 +6,7 @@
 
 A modular, open-source performance & privacy tool for Windows 10/11. It disables ads and telemetry, trims background activity and cleans RAM, with a live memory graph so you can **see** the effect of every optimization.
 
-> **Version 2.1** — startup manager, disk cleaner, 43 optimizations including privacy permissions and gaming performance, live RAM monitoring and a safe in-app updater with a progress bar.
+> **Version 2.2** — services analysis, startup manager, disk cleaner, 43 optimizations including privacy permissions and gaming performance, live RAM monitoring and a safe in-app updater with a progress bar.
 
 ## ✨ Features
 
@@ -16,6 +16,7 @@ A modular, open-source performance & privacy tool for Windows 10/11. It disables
 | ⚡ **Optimizations** | 43 tweaks in 6 categories. Each setting's **current state is read from the system**; turning it off restores the Windows default |
 | 🧠 **Memory (RAM)** | Live 2-minute stacked graph (in use / modified / standby), one-click cleaning, before/after results, top memory consumers, auto-clean by usage threshold |
 | 🚀 **Startup** | Every program that runs at boot (registry, Startup folder, scheduled tasks) with icon, publisher and command line; toggle with one click. Compatible with Task Manager |
+| 🔧 **Services** | Scans all Windows services and separates Windows components, third-party and unnecessary ones. Explains every suggestion, applies the safe ones in one click, every change can be undone |
 | 🧹 **Disk Cleanup** | Capacity cards for all drives; scans temp files, Windows Update cache, browser caches, crash dumps, shader cache and Recycle Bin, shows sizes and cleans the selected ones |
 | ⚙️ **Settings** | Language (TR/EN), update check, shortcut repair, system restore point, log file |
 
@@ -95,6 +96,7 @@ Windows-Optimizer/
     ├── RamCleaner.ps1       # Live memory measurement + cleaning (native API)
     ├── Startup.ps1          # Startup apps manager
     ├── DiskCleaner.ps1      # Drive capacity + junk file cleanup
+    ├── Services.ps1         # Background services analysis
     └── Updater.ps1          # Version check, download, shortcuts
 ```
 

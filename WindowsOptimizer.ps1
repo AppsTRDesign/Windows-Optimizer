@@ -29,6 +29,7 @@ function Write-WoLog([string]$Msg) {
 . (Join-Path $AppDir "modules\Updater.ps1")
 . (Join-Path $AppDir "modules\Startup.ps1")
 . (Join-Path $AppDir "modules\DiskCleaner.ps1")
+. (Join-Path $AppDir "modules\Services.ps1")
 
 # Konsol penceresini gizle (kisayol zaten gizli baslatir; dogrudan calistirma icin)
 if (-not $Snapshot) { try { [void][WoNative]::ShowWindow([WoNative]::GetConsoleWindow(), 0) } catch {} }
@@ -83,10 +84,11 @@ TR = @{
     QaExplorerT = "Explorer'ı yeniden başlat"; QaExplorerD = "Görev çubuğu/Başlat değişikliklerini anında uygular"
     QaRestoreT = "Geri yükleme noktası oluştur"; QaRestoreD = "Değişiklik yapmadan önce güvenli bir yedek alın"
     BtnSelRec = "Önerilenleri seç"; BtnSelReset = "Seçimi sıfırla"
-    TwSummary = "{0} / {1} optimizasyon etkin"; TwPending = "  ·  {0} bekleyen değişiklik"
+    TwSummary = "{0} / {1} optimizasyon uygulandı"; TwPending = "  ·  {0} bekleyen değişiklik"
     BtnApplyN = "Uygula ({0})"; BtnApply0 = "Değişiklik yok"
     RestartText = "Bazı değişikliklerin görünmesi için Explorer'ın yeniden başlatılması gerekiyor."; BtnRestartExplorer = "Şimdi yeniden başlat"
-    Chip_On = "Etkin"; Chip_Off = "Kapalı"; Chip_Apply = "Uygulanacak"; Chip_Revert = "Geri alınacak"; RecBadge = "ÖNERİLEN"
+    Chip_On = "Uygulandı"; Chip_Off = "Uygulanmadı"; Chip_Apply = "Uygulanacak"; Chip_Revert = "Geri alınacak"; RecBadge = "ÖNERİLEN"; RecBadgeOff = "KAPATILMASI ÖNERİLİR"
+    Chip_PermOn = "İzin açık"; Chip_PermOff = "İzin kapalı"; Chip_PermClose = "Kapatılacak"; Chip_PermOpen = "Açılacak"
     NeedExplorer = "Explorer yeniden başlatma gerekir"; NeedLogoff = "Oturumu kapatıp açmak gerekir"
     Applying = "Optimizasyonlar uygulanıyor…"; ApplyOK = "{0} değişiklik başarıyla uygulandı"; ApplyWarn = "{0} başarılı, {1} hata — ayrıntılar günlük dosyasında"
     LogoffHint = " · Bazı ayarlar oturum yeniden açıldığında etkinleşir"
@@ -136,10 +138,28 @@ TR = @{
     BtnDiskClean = "Seçilenleri Temizle"; DcCleaning = "Temizleniyor…"
     DcResult = "{0} boşaltıldı"; DcResultSub = "{0:N0} dosya silindi · {1:N0} dosya kullanımda olduğu için atlandı"
     DcNote = "Kullanımdaki dosyalar ve son 24 saatte değişen geçici dosyalar atlanır. Tarayıcı geçmişi, şifreler ve çerezler silinmez."
-    BtnCleanMgr = "Windows Disk Temizleme"; DcConfirm = "{0} kalıcı olarak silinecek.`n`nDevam edilsin mi?"
+    BtnCleanMgr = "Windows Disk Temizleme"; DcConfirm = "Seçilen kategorilerdeki {0} gereksiz dosya kalıcı olarak silinecek. Bu işlem geri alınamaz."
     DcRecycleConfirm = "`n`nGeri Dönüşüm Kutusu da kalıcı olarak boşaltılacak."
+    DcConfirmTitle = "Gereksiz dosyalar temizlensin mi?"; DcConfirmOk = "Temizle"; DlgCancel = "Vazgeç"; DlgOk = "Tamam"
     DcDone = "Disk temizliği tamamlandı: {0} boşaltıldı"
     DriveFree = "{0} boş / {1}"; DriveSystem = "SİSTEM"; DriveLocal = "Yerel Disk"
+    NavServices = "Servisler"; Title_Services = "Arka Plan Servisleri"; Sub_Services = "Gereksiz servisleri tespit edin, sistem servislerini koruyun"
+    SvLoading = "Servisler taranıyor…"; SvSummary = "{0} servis · {1} çalışıyor · {2} öneri · {3} üçüncü parti"
+    SvHint = "Öneriler yalnızca güvenli olduğu bilinen servisler içindir. Her değişiklik kaydedilir ve geri alınabilir."
+    BtnSvRefresh = "Yenile"; BtnSvApplyRec = "Güvenli önerileri uygula"; SvSearchHint = "Servis ara…"
+    SvF_rec = "Öneriler ({0})"; SvF_third = "Üçüncü parti ({0})"; SvF_run = "Çalışanlar ({0})"; SvF_all = "Tümü ({0})"
+    SvMode_Automatic = "Otomatik"; SvMode_Manual = "El ile"; SvMode_Disabled = "Kapalı"
+    SvRun = "Çalışıyor"; SvStop = "Durdu"; SvBadgeRec = "ÖNERİ: {0}"; SvBadgeCaution = "DİKKAT"; SvBadgeThird = "ÜÇÜNCÜ PARTİ"; SvBadgeWin = "WINDOWS"
+    SvUndo = "Geri al"; SvEmpty = "Bu filtrede servis yok — sisteminiz bu açıdan temiz görünüyor."
+    SvChanged = "{0}: başlangıç tipi {1} yapıldı"; SvRestored = "{0} orijinal ayarına döndürüldü"; SvFail = "{0} değiştirilemedi: {1}"
+    SvWarnTitle = "Bu bir Windows bileşeni"; SvWarnMsg = "'{0}' Windows'un parçası. Devre dışı bırakmak bazı özelliklerin çalışmamasına yol açabilir. Emin misiniz?"
+    SvCautionTitle = "Dikkat gerektiren servis"; SvContinue = "Devam et"
+    SvRecTitle = "Güvenli öneriler uygulansın mı?"; SvRecMsg = "{0} servisin başlangıç tipi önerilen değere ayarlanacak. 'Dikkat' etiketli servisler dahil değildir. Tüm değişiklikler geri alınabilir."
+    SvRecDone = "{0} servis güncellendi"; SvApply = "Uygula"
+    SuJunkBadge = "KAPATILABİLİR"; BtnSuDisableJunk = "Gereksizleri kapat"
+    SuJunkTitle = "Gereksiz başlangıç öğeleri kapatılsın mı?"; SuJunkMsg = "{0} öğe Windows açılırken başlamayacak:`n`n{1}`n`nUygulamalar silinmez; ihtiyaç duyduğunuzda normal şekilde açabilirsiniz."
+    SuJunkDone = "{0} başlangıç öğesi kapatıldı"; SuJunkNone = "Kapatılacak gereksiz öğe yok"
+    PermWarnTitle = "Donanım erişimi kapatılacak"; PermWarnMsg = "Şu izinler kapatılacak: {0}.`n`nBu izinleri kullanan uygulamalar (Discord, Teams, görüntülü görüşme, hava durumu vb.) çalışmayabilir."
 }
 EN = @{
     NavCaption = "MENU"; NavHome = "Overview"; NavTweaks = "Optimizations"; NavMemory = "Memory (RAM)"; NavSettings = "Settings"
@@ -164,10 +184,11 @@ EN = @{
     QaExplorerT = "Restart Explorer"; QaExplorerD = "Applies taskbar/Start changes instantly"
     QaRestoreT = "Create restore point"; QaRestoreD = "Take a safe backup before making changes"
     BtnSelRec = "Select recommended"; BtnSelReset = "Reset selection"
-    TwSummary = "{0} / {1} optimizations active"; TwPending = "  ·  {0} pending changes"
+    TwSummary = "{0} / {1} optimizations applied"; TwPending = "  ·  {0} pending changes"
     BtnApplyN = "Apply ({0})"; BtnApply0 = "No changes"
     RestartText = "Explorer needs to restart for some changes to become visible."; BtnRestartExplorer = "Restart now"
-    Chip_On = "Active"; Chip_Off = "Off"; Chip_Apply = "Will apply"; Chip_Revert = "Will revert"; RecBadge = "RECOMMENDED"
+    Chip_On = "Applied"; Chip_Off = "Not applied"; Chip_Apply = "Will apply"; Chip_Revert = "Will revert"; RecBadge = "RECOMMENDED"; RecBadgeOff = "RECOMMENDED OFF"
+    Chip_PermOn = "Allowed"; Chip_PermOff = "Blocked"; Chip_PermClose = "Will block"; Chip_PermOpen = "Will allow"
     NeedExplorer = "Requires Explorer restart"; NeedLogoff = "Requires sign out"
     Applying = "Applying optimizations…"; ApplyOK = "{0} changes applied successfully"; ApplyWarn = "{0} succeeded, {1} failed — see log file"
     LogoffHint = " · Some settings take effect after signing in again"
@@ -217,10 +238,28 @@ EN = @{
     BtnDiskClean = "Clean Selected"; DcCleaning = "Cleaning…"
     DcResult = "{0} freed"; DcResultSub = "{0:N0} files deleted · {1:N0} files skipped (in use)"
     DcNote = "Files in use and temp files changed in the last 24 hours are skipped. Browser history, passwords and cookies are not deleted."
-    BtnCleanMgr = "Windows Disk Cleanup"; DcConfirm = "{0} will be permanently deleted.`n`nContinue?"
+    BtnCleanMgr = "Windows Disk Cleanup"; DcConfirm = "{0} of junk files in the selected categories will be permanently deleted. This cannot be undone."
     DcRecycleConfirm = "`n`nThe Recycle Bin will also be permanently emptied."
+    DcConfirmTitle = "Clean junk files?"; DcConfirmOk = "Clean"; DlgCancel = "Cancel"; DlgOk = "OK"
     DcDone = "Disk cleanup complete: {0} freed"
     DriveFree = "{0} free / {1}"; DriveSystem = "SYSTEM"; DriveLocal = "Local Disk"
+    NavServices = "Services"; Title_Services = "Background Services"; Sub_Services = "Find unnecessary services, keep system services safe"
+    SvLoading = "Scanning services…"; SvSummary = "{0} services · {1} running · {2} suggestions · {3} third-party"
+    SvHint = "Suggestions only cover services known to be safe. Every change is recorded and can be undone."
+    BtnSvRefresh = "Refresh"; BtnSvApplyRec = "Apply safe suggestions"; SvSearchHint = "Search services…"
+    SvF_rec = "Suggestions ({0})"; SvF_third = "Third-party ({0})"; SvF_run = "Running ({0})"; SvF_all = "All ({0})"
+    SvMode_Automatic = "Auto"; SvMode_Manual = "Manual"; SvMode_Disabled = "Disabled"
+    SvRun = "Running"; SvStop = "Stopped"; SvBadgeRec = "SUGGESTED: {0}"; SvBadgeCaution = "CAUTION"; SvBadgeThird = "THIRD-PARTY"; SvBadgeWin = "WINDOWS"
+    SvUndo = "Undo"; SvEmpty = "No services in this filter — looks clean."
+    SvChanged = "{0}: startup type set to {1}"; SvRestored = "{0} restored to its original setting"; SvFail = "Could not change {0}: {1}"
+    SvWarnTitle = "This is a Windows component"; SvWarnMsg = "'{0}' is part of Windows. Disabling it may break some features. Are you sure?"
+    SvCautionTitle = "Service needs caution"; SvContinue = "Continue"
+    SvRecTitle = "Apply safe suggestions?"; SvRecMsg = "The startup type of {0} services will be set to the suggested value. Services marked 'Caution' are not included. All changes can be undone."
+    SvRecDone = "{0} services updated"; SvApply = "Apply"
+    SuJunkBadge = "CAN DISABLE"; BtnSuDisableJunk = "Disable unneeded"
+    SuJunkTitle = "Disable unneeded startup items?"; SuJunkMsg = "{0} items will no longer start with Windows:`n`n{1}`n`nApps are not removed; you can open them normally when needed."
+    SuJunkDone = "{0} startup items disabled"; SuJunkNone = "No unneeded items to disable"
+    PermWarnTitle = "Hardware access will be blocked"; PermWarnMsg = "These permissions will be blocked: {0}.`n`nApps that use them (Discord, Teams, video calls, weather etc.) may stop working."
 }
 }
 $script:Lang = $Settings.language
@@ -448,6 +487,31 @@ $xaml = @'
       </Setter>
     </Style>
 
+    <Style x:Key="DangerBtn" TargetType="Button" BasedOn="{StaticResource PrimaryBtn}">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Grid>
+              <Border x:Name="Bd" CornerRadius="9">
+                <Border.Background>
+                  <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#E5484D" Offset="0"/><GradientStop Color="#F97316" Offset="1"/>
+                  </LinearGradientBrush>
+                </Border.Background>
+              </Border>
+              <Border x:Name="Hl" CornerRadius="9" Background="White" Opacity="0"/>
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Hl" Property="Opacity" Value="0.08"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Hl" Property="Opacity" Value="0.16"/></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
     <Style x:Key="SecondaryBtn" TargetType="Button">
       <Setter Property="Foreground" Value="{StaticResource Txt}"/>
       <Setter Property="FontSize" Value="12.5"/>
@@ -592,6 +656,7 @@ $xaml = @'
           <RadioButton x:Name="NavTweaks"   DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE945;"/>
           <RadioButton x:Name="NavMemory"   DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE9D9;"/>
           <RadioButton x:Name="NavStartup"  DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE7E8;"/>
+          <RadioButton x:Name="NavServices" DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE90F;"/>
           <RadioButton x:Name="NavDisk"     DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xEDA2;"/>
           <RadioButton x:Name="NavSettings" DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE713;"/>
 
@@ -996,11 +1061,12 @@ $xaml = @'
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
             <Border Style="{StaticResource Card}" Padding="18,12" Margin="0,0,14,0">
               <Grid>
-                <StackPanel VerticalAlignment="Center" Margin="0,0,330,0">
+                <StackPanel VerticalAlignment="Center" Margin="0,0,470,0">
                   <TextBlock x:Name="SuSummary" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource Txt}"/>
                   <TextBlock x:Name="SuHint" Style="{StaticResource Desc}" Margin="0,4,0,0"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                  <Button x:Name="BtnSuDisableJunk" Style="{StaticResource PrimaryBtn}" Height="36" Margin="0,0,8,0"/>
                   <Button x:Name="BtnSuTaskMgr" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
                   <Button x:Name="BtnSuRefresh" Style="{StaticResource SecondaryBtn}"/>
                 </StackPanel>
@@ -1008,6 +1074,42 @@ $xaml = @'
             </Border>
             <ScrollViewer Grid.Row="1" Margin="0,14,0,0">
               <StackPanel x:Name="StartupList" Margin="0,0,14,20"/>
+            </ScrollViewer>
+          </Grid>
+
+          <!-- ============ SERVICES ============ -->
+          <Grid x:Name="PageServices" Visibility="Collapsed">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <Border Style="{StaticResource Card}" Padding="18,12" Margin="0,0,14,0">
+              <Grid>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,330,0">
+                  <TextBlock x:Name="SvSummary" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource Txt}"/>
+                  <TextBlock x:Name="SvHint" Style="{StaticResource Desc}" Margin="0,4,0,0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                  <Button x:Name="BtnSvRefresh" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
+                  <Button x:Name="BtnSvApplyRec" Style="{StaticResource PrimaryBtn}" Height="36"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Grid Grid.Row="1" Margin="0,12,14,0">
+              <WrapPanel VerticalAlignment="Center" Margin="0,0,260,0">
+                <RadioButton x:Name="SvFRec"   GroupName="svf" Style="{StaticResource SegBtn}" Tag="rec" IsChecked="True"/>
+                <RadioButton x:Name="SvFThird" GroupName="svf" Style="{StaticResource SegBtn}" Tag="third"/>
+                <RadioButton x:Name="SvFRun"   GroupName="svf" Style="{StaticResource SegBtn}" Tag="run"/>
+                <RadioButton x:Name="SvFAll"   GroupName="svf" Style="{StaticResource SegBtn}" Tag="all"/>
+              </WrapPanel>
+              <Border HorizontalAlignment="Right" Width="240" Height="34" CornerRadius="9" Background="#1B1B2B" BorderBrush="#2A2A42" BorderThickness="1">
+                <Grid>
+                  <TextBlock Text="&#xE721;" Style="{StaticResource Ico}" FontSize="12" Foreground="#7A7A94" Margin="12,0,0,0" HorizontalAlignment="Left"/>
+                  <TextBlock x:Name="SvSearchHint" IsHitTestVisible="False" FontSize="12.5" Foreground="#6A6A86" VerticalAlignment="Center" Margin="36,0,0,0"/>
+                  <TextBox x:Name="SvSearch" Background="Transparent" BorderThickness="0" Foreground="#EDEDF5" CaretBrush="#A78BFA"
+                           FontSize="12.5" VerticalContentAlignment="Center" Margin="32,0,10,0"/>
+                </Grid>
+              </Border>
+            </Grid>
+            <ScrollViewer x:Name="SvScroll" Grid.Row="2" Margin="0,12,0,0">
+              <StackPanel x:Name="ServiceList" Margin="0,0,14,20"/>
             </ScrollViewer>
           </Grid>
 
@@ -1114,6 +1216,7 @@ $xaml = @'
           </Grid>
         </Border>
       </Grid>
+      <Border x:Name="Overlay" Grid.ColumnSpan="2" Background="#B0050508" CornerRadius="12" Visibility="Collapsed"/>
     </Grid>
   </Border>
 </Window>
@@ -1147,6 +1250,67 @@ try {
         $btn = N $pair[0]; $url = $Config.($pair[1])
         if ($url -and $url -ne "#") { $btn.Tag = $url; $btn.Add_Click({ param($s) Start-Process $s.Tag }) }
         else { $btn.Visibility = "Collapsed" }
+    }
+
+    # ---------------- TASARIMA UYGUN MODAL PENCERE ----------------
+    $DialogXaml = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent" ShowInTaskbar="False"
+        SizeToContent="Height" Width="480" ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
+        FontFamily="Segoe UI Variable Text, Segoe UI" TextOptions.TextFormattingMode="Display" UseLayoutRounding="True">
+  <Border Margin="20" CornerRadius="14" Background="#15151F" BorderBrush="#2E2E4A" BorderThickness="1">
+    <Border.Effect><DropShadowEffect BlurRadius="28" ShadowDepth="0" Opacity="0.6" Color="Black"/></Border.Effect>
+    <StackPanel Margin="26,24,26,22">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Border x:Name="IcoBox" Width="42" Height="42" CornerRadius="21" VerticalAlignment="Top">
+          <TextBlock x:Name="Ico" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="16,0,0,0">
+          <TextBlock x:Name="Ttl" FontSize="16.5" FontWeight="SemiBold" Foreground="White" TextWrapping="Wrap"/>
+          <TextBlock x:Name="Msg" FontSize="13" Foreground="#B4B4CC" TextWrapping="Wrap" Margin="0,8,0,0" LineHeight="20"/>
+        </StackPanel>
+      </Grid>
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
+        <Button x:Name="BtnCancel" MinWidth="110" Margin="0,0,10,0" IsCancel="True"/>
+        <Button x:Name="BtnOk" MinWidth="130" IsDefault="True"/>
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</Window>
+'@
+
+    # Kind: warn | info | error | ok ; Cancel bossa tek dugmeli bilgi penceresi
+    function New-WoDialog([string]$Title, [string]$Message, [string]$Kind = "warn", [string]$Ok = $null, [string]$Cancel = $null, [switch]$Danger) {
+        $dlg = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader ([xml]$DialogXaml)))
+        $kinds = @{
+            warn  = @("#3A2E10", "#FBBF24", 0xE7BA); info = @("#231F3F", "#A78BFA", 0xE946)
+            error = @("#3A1520", "#F87171", 0xE783); ok = @("#12302A", "#34D399", 0xE73E)
+        }
+        $k = $kinds[$Kind]; if (-not $k) { $k = $kinds.info }
+        $dlg.FindName("IcoBox").Background = Brush $k[0]
+        $dlg.FindName("Ico").Foreground = Brush $k[1]; $dlg.FindName("Ico").Text = [string][char]$k[2]
+        $dlg.FindName("Ttl").Text = $Title
+        $dlg.FindName("Msg").Text = $Message
+        $okBtn = $dlg.FindName("BtnOk"); $cancelBtn = $dlg.FindName("BtnCancel")
+        $okBtn.Style = $window.FindResource($(if ($Danger) { "DangerBtn" } else { "PrimaryBtn" }))
+        $cancelBtn.Style = $window.FindResource("SecondaryBtn")
+        $okBtn.Content = if ($Ok) { $Ok } else { T "DlgOk" }
+        if ($Cancel) { $cancelBtn.Content = $Cancel } else { $cancelBtn.Visibility = "Collapsed" }
+        $okBtn.Add_Click({ param($s) $w = [Windows.Window]::GetWindow($s); $w.Tag = $true; $w.Close() })
+        $cancelBtn.Add_Click({ param($s) [Windows.Window]::GetWindow($s).Close() })
+        $dlg.Add_MouseLeftButtonDown({ param($s) try { $s.DragMove() } catch {} })
+        return $dlg
+    }
+
+    function Show-WoDialog([string]$Title, [string]$Message, [string]$Kind = "warn", [string]$Ok = $null, [string]$Cancel = $null, [switch]$Danger) {
+        $dlg = New-WoDialog -Title $Title -Message $Message -Kind $Kind -Ok $Ok -Cancel $Cancel -Danger:$Danger
+        $dlg.Owner = $window
+        (N "Overlay").Visibility = "Visible"
+        try { [void]$dlg.ShowDialog() } finally { (N "Overlay").Visibility = "Collapsed" }
+        return [bool]$dlg.Tag
     }
 
     # ---------------- DURUM ÇUBUĞU ----------------
@@ -1183,8 +1347,8 @@ try {
     }
 
     # ---------------- SAYFALAR ----------------
-    $Pages = @{ Home = "PageHome"; Tweaks = "PageTweaks"; Memory = "PageMemory"; Startup = "PageStartup"; Disk = "PageDisk"; Settings = "PageSettings" }
-    $PageOrder = @("Home", "Tweaks", "Memory", "Startup", "Disk", "Settings")
+    $Pages = @{ Home = "PageHome"; Tweaks = "PageTweaks"; Memory = "PageMemory"; Startup = "PageStartup"; Services = "PageServices"; Disk = "PageDisk"; Settings = "PageSettings" }
+    $PageOrder = @("Home", "Tweaks", "Memory", "Startup", "Services", "Disk", "Settings")
     $script:Page = "Home"
     function Show-Page([string]$Name) {
         $script:Page = $Name
@@ -1194,6 +1358,7 @@ try {
         (N "Nav$Name").IsChecked = $true
         if ($Name -eq "Memory") { $window.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background, [Action]{ Draw-MemChart; Refresh-ProcList }) | Out-Null }
         if ($Name -eq "Startup" -and -not $script:StartupLoaded) { Load-Startup }
+        if ($Name -eq "Services" -and -not $script:SvcLoaded) { Load-Services }
         if ($Name -eq "Disk") { (N "PageDisk").ScrollToTop(); Show-Drives; if (-not $script:DiskScanned) { Start-DiskScan } }
         if ($Name -eq "Home") { $window.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background, [Action]{ Draw-Sparks }) | Out-Null }
     }
@@ -1215,6 +1380,17 @@ try {
         $tb.Text = $Text; $tb.FontSize = $Size; $tb.Foreground = Brush $Color; $tb.TextWrapping = "Wrap"
         return $tb
     }
+
+    # Gizlilik izinlerinde anahtar iznin kendisini gosterir: acik = izin verilmis (optimizasyon uygulanmamis)
+    function Test-Inverted($t) { $t.Cat -eq "perm" }
+    function Get-WantApplied($t) {
+        $on = [bool]$script:TweakRows[$t.Id].Switch.IsChecked
+        if (Test-Inverted $t) { -not $on } else { $on }
+    }
+    function Set-WantApplied($t, [bool]$Applied) {
+        $script:TweakRows[$t.Id].Switch.IsChecked = if (Test-Inverted $t) { -not $Applied } else { $Applied }
+    }
+    function Sync-TweakSwitches { foreach ($t in $TweakCatalog) { if ($script:TweakRows[$t.Id]) { Set-WantApplied $t $script:TweakState[$t.Id] } } }
 
     function Build-TweakList {
         $list = N "TweakList"
@@ -1266,7 +1442,7 @@ try {
                     $rb.CornerRadius = New-Object Windows.CornerRadius(5); $rb.Background = Brush "#1E2A44"
                     $rb.Padding = New-Object Windows.Thickness(6, 1, 6, 1); $rb.Margin = New-Object Windows.Thickness(8, 1, 0, 0)
                     $rb.VerticalAlignment = "Center"
-                    $rbt = New-Tb (T "RecBadge") 9.5 "#7DD3FC"; $rbt.FontWeight = [Windows.FontWeights]::Bold
+                    $rbt = New-Tb (T $(if (Test-Inverted $t) { "RecBadgeOff" } else { "RecBadge" })) 9.5 "#7DD3FC"; $rbt.FontWeight = [Windows.FontWeights]::Bold
                     $rb.Child = $rbt
                     [void]$titleRow.Children.Add($rb)
                 }
@@ -1288,7 +1464,7 @@ try {
 
                 $sw = New-Object Windows.Controls.CheckBox
                 $sw.Style = $switchStyle; $sw.Tag = $t.Id
-                $sw.IsChecked = $script:TweakState[$t.Id]
+                $sw.IsChecked = if (Test-Inverted $t) { -not $script:TweakState[$t.Id] } else { $script:TweakState[$t.Id] }
                 $sw.Add_Click({ Update-TweakSummary })
                 [Windows.Controls.Grid]::SetColumn($sw, 2)
 
@@ -1314,12 +1490,13 @@ try {
             $catCount[$t.Cat][1]++; if ($cur) { $catCount[$t.Cat][0]++ }
             $r = $script:TweakRows[$t.Id]
             if (-not $r) { continue }
-            $want = [bool]$r.Switch.IsChecked
+            $want = Get-WantApplied $t
             if ($want -ne $cur) { $pending++ }
-            $style = if ($want -and -not $cur) { @("Chip_Apply", "#2A2350", "#C4B5FD") }
-                     elseif (-not $want -and $cur) { @("Chip_Revert", "#3A2E10", "#FCD34D") }
-                     elseif ($cur) { @("Chip_On", "#12302A", "#6EE7B7") }
-                     else { @("Chip_Off", "#1C1C2C", "#8A8AA6") }
+            $pk = if (Test-Inverted $t) { @("Chip_PermClose", "Chip_PermOpen", "Chip_PermOff", "Chip_PermOn") } else { @("Chip_Apply", "Chip_Revert", "Chip_On", "Chip_Off") }
+            $style = if ($want -and -not $cur) { @($pk[0], "#2A2350", "#C4B5FD") }
+                     elseif (-not $want -and $cur) { @($pk[1], "#3A2E10", "#FCD34D") }
+                     elseif ($cur) { @($pk[2], "#12302A", "#6EE7B7") }
+                     else { @($pk[3], "#1C1C2C", "#8A8AA6") }
             $r.ChipText.Text = T $style[0]
             $r.Chip.Background = Brush $style[1]
             $r.ChipText.Foreground = Brush $style[2]
@@ -1344,11 +1521,15 @@ try {
         if ($script:Applying) { return }
         $apply = @(); $revert = @()
         foreach ($t in $TweakCatalog) {
-            $want = [bool]$script:TweakRows[$t.Id].Switch.IsChecked
+            $want = Get-WantApplied $t
             $cur = $script:TweakState[$t.Id]
             if ($want -and -not $cur) { $apply += $t.Id } elseif (-not $want -and $cur) { $revert += $t.Id }
         }
         if (($apply.Count + $revert.Count) -eq 0) { return }
+        $risky = @($apply | Where-Object { $_ -in @("PermLocation", "PermMic", "PermCamera") } | ForEach-Object { (Get-WoTweak $_)[$script:Lang][0] })
+        if ($risky.Count -gt 0) {
+            if (-not (Show-WoDialog -Title (T "PermWarnTitle") -Message ((T "PermWarnMsg") -f ($risky -join ", ")) -Kind "warn" -Ok (T "SvContinue") -Cancel (T "DlgCancel"))) { return }
+        }
         $script:Applying = $true
         (N "BtnApplyTweaks").IsEnabled = $false; (N "BtnQuickOptimize").IsEnabled = $false
         Set-Status (T "Applying") "busy"
@@ -1374,7 +1555,7 @@ try {
             if ($err) { Write-WoLog "Tweak isi hatasi: $err" }
 
             Refresh-TweakStates
-            foreach ($id in $script:TweakRows.Keys) { $script:TweakRows[$id].Switch.IsChecked = $script:TweakState[$id] }
+            Sync-TweakSwitches
             Update-TweakSummary
 
             $restarts = @($out | Where-Object { $_.Ok } | ForEach-Object { (Get-WoTweak $_.Id).Restart } | Where-Object { $_ })
@@ -1392,7 +1573,7 @@ try {
 
     function Select-Recommended {
         foreach ($t in $TweakCatalog) {
-            if ($t.Rec) { $script:TweakRows[$t.Id].Switch.IsChecked = $true }
+            if ($t.Rec) { Set-WantApplied $t $true }
         }
         Update-TweakSummary
     }
@@ -1400,7 +1581,7 @@ try {
     (N "BtnApplyTweaks").Add_Click({ Invoke-TweakChanges })
     (N "BtnSelRec").Add_Click({ Select-Recommended })
     (N "BtnSelReset").Add_Click({
-        foreach ($id in $script:TweakRows.Keys) { $script:TweakRows[$id].Switch.IsChecked = $script:TweakState[$id] }
+        Sync-TweakSwitches
         Update-TweakSummary
     })
     (N "BtnQuickOptimize").Add_Click({ Select-Recommended; Invoke-TweakChanges })
@@ -1993,6 +2174,7 @@ try {
                 [void]$tr.Children.Add($nm)
                 if ($it.Critical) { [void]$tr.Children.Add((New-Badge (T "SuCritical") "#3A2E10" "#FCD34D")) }
                 if (-not $it.Exists) { [void]$tr.Children.Add((New-Badge (T "SuMissing") "#3A1520" "#FCA5A5")) }
+                if ($it.Junk -and $it.Enabled) { [void]$tr.Children.Add((New-Badge (T "SuJunkBadge") "#1E2A44" "#7DD3FC")) }
                 $pub = if ($it.Publisher) { "$($it.Publisher)  ·  " } else { "" }
                 $meta = New-Tb ($pub + (T "Src_$($it.Source)")) 11.5 "#9C9CB8"; $meta.Margin = New-Object Windows.Thickness(0, 2, 0, 0)
                 $cmd = New-Tb $it.Command 10.5 "#6A6A86"; $cmd.TextWrapping = "NoWrap"; $cmd.TextTrimming = "CharacterEllipsis"
@@ -2031,6 +2213,232 @@ try {
     }
     (N "BtnSuRefresh").Add_Click({ Load-Startup })
     (N "BtnSuTaskMgr").Add_Click({ Start-Process taskmgr.exe -ArgumentList "/7 /startup" })
+
+    function Disable-JunkStartup {
+        $items = @($script:StartupItems | Where-Object { $_.Junk -and $_.Enabled })
+        if ($items.Count -eq 0) { Set-Status (T "SuJunkNone") "info"; return }
+        $names = ($items | ForEach-Object { "•  " + $(if ($_.Description -and $_.Name -match '_[0-9A-F]{16,}') { $_.Description } else { $_.Name }) }) -join "`n"
+        if (-not (Show-WoDialog -Title (T "SuJunkTitle") -Message ((T "SuJunkMsg") -f $items.Count, $names) -Kind "info" -Ok (T "BtnSuDisableJunk") -Cancel (T "DlgCancel"))) { return }
+        $done = 0
+        foreach ($it in $items) {
+            try { Set-WoStartupItem $it $false; $it.Enabled = $false; $done++ } catch { Write-WoLog "Baslangic kapatilamadi ($($it.Name)): $_" }
+        }
+        Build-StartupList
+        Set-Status ((T "SuJunkDone") -f $done) "ok"
+    }
+    (N "BtnSuDisableJunk").Add_Click({ Disable-JunkStartup })
+
+    # ================= SERVİSLER =================
+    $script:Services = @()
+    $script:SvcLoaded = $false
+    $script:SvcBusy = $false
+    $script:SvcFilter = "rec"
+
+    function Load-Services {
+        if ($script:SvcBusy) { return }
+        $script:SvcBusy = $true
+        (N "SvSummary").Text = T "SvLoading"
+        (N "BtnSvRefresh").IsEnabled = $false; (N "BtnSvApplyRec").IsEnabled = $false
+        Start-Bg -Work {
+            param($M1, $M2)
+            . $M1; . $M2
+            Get-WoServices
+        } -ArgList @((Join-Path $AppDir "modules\Startup.ps1"), (Join-Path $AppDir "modules\Services.ps1")) -Done {
+            param($out, $err)
+            $script:SvcBusy = $false; $script:SvcLoaded = $true
+            (N "BtnSvRefresh").IsEnabled = $true
+            if ($err) { Write-WoLog "Servis taramasi: $err" }
+            $script:Services = @($out | Where-Object { $_ -and $_.Name })
+            Build-ServiceList
+        }
+    }
+
+    function Update-ServiceItem($svc) {
+        $rank = @{ Automatic = 2; Manual = 1; Disabled = 0 }
+        $svc.NeedsChange = $svc.RecStart -and $rank.ContainsKey($svc.StartMode) -and $rank[$svc.StartMode] -gt $rank[$svc.RecStart]
+        $svc.Category = if ($svc.NeedsChange) { "rec" } elseif (-not $svc.IsMicrosoft) { "third" } else { "ms" }
+    }
+
+    function Build-ServiceList {
+        $list = N "ServiceList"; $list.Children.Clear()
+        $all = $script:Services
+        $counts = @{
+            rec = @($all | Where-Object Category -eq "rec").Count; third = @($all | Where-Object { -not $_.IsMicrosoft }).Count
+            run = @($all | Where-Object State -eq "Running").Count; all = $all.Count
+        }
+        foreach ($f in @("rec", "third", "run", "all")) {
+            $rb = N ("SvF" + @{ rec = "Rec"; third = "Third"; run = "Run"; all = "All" }[$f])
+            $rb.Content = (T "SvF_$f") -f $counts[$f]
+        }
+        (N "SvSummary").Text = (T "SvSummary") -f $counts.all, $counts.run, $counts.rec, $counts.third
+        $safeRec = @($all | Where-Object { $_.Category -eq "rec" -and $_.Risk -eq "safe" }).Count
+        (N "BtnSvApplyRec").IsEnabled = ($safeRec -gt 0) -and -not $script:SvcBusy
+
+        $q = "$((N 'SvSearch').Text)".Trim()
+        $items = switch ($script:SvcFilter) {
+            "rec"   { @($all | Where-Object Category -eq "rec") }
+            "third" { @($all | Where-Object { -not $_.IsMicrosoft }) }
+            "run"   { @($all | Where-Object State -eq "Running") }
+            default { @($all) }
+        }
+        if ($q) { $items = @($items | Where-Object { $_.Display -like "*$q*" -or $_.Name -like "*$q*" -or $_.Company -like "*$q*" }) }
+        $items = @($items | Sort-Object @{ e = { $_.Category -ne "rec" } }, @{ e = { $_.State -ne "Running" } }, Display)
+
+        if ($items.Count -eq 0) {
+            $e = New-Tb (T "SvEmpty") 13 "#7A7A94"; $e.Margin = New-Object Windows.Thickness(6, 20, 0, 0)
+            [void]$list.Children.Add($e); return
+        }
+        $card = New-Object Windows.Controls.Border
+        $card.Style = $window.FindResource("Card"); $card.Padding = New-Object Windows.Thickness(0)
+        $stack = New-Object Windows.Controls.StackPanel; $card.Child = $stack
+        $seg = $window.FindResource("SegBtn"); $sec = $window.FindResource("SecondaryBtn"); $iconFont = $window.FindResource("Icons")
+        $first = $true
+        foreach ($svc in $items) {
+            $row = New-Object Windows.Controls.Border
+            $row.Padding = New-Object Windows.Thickness(18, 12, 18, 12)
+            if (-not $first) { $row.BorderBrush = Brush "#1E1E32"; $row.BorderThickness = New-Object Windows.Thickness(0, 1, 0, 0) }
+            $first = $false
+            $g = New-Object Windows.Controls.Grid; New-Cols $g @(44, "*", "Auto", "Auto")
+
+            $ib = New-Object Windows.Controls.Border
+            $ib.Width = 32; $ib.Height = 32; $ib.CornerRadius = New-Object Windows.CornerRadius(8); $ib.HorizontalAlignment = "Left"; $ib.VerticalAlignment = "Top"
+            $ib.Background = Brush $(if ($svc.Category -eq "rec") { "#2A2350" } elseif (-not $svc.IsMicrosoft) { "#1E2A44" } else { "#1C1C2E" })
+            $ic = New-Tb ([string][char]0xE90F) 14 $(if ($svc.State -eq "Running") { "#34D399" } else { "#6A6A86" })
+            $ic.FontFamily = $iconFont; $ic.HorizontalAlignment = "Center"; $ic.VerticalAlignment = "Center"; $ib.Child = $ic
+
+            $txt = New-Object Windows.Controls.StackPanel; $txt.Margin = New-Object Windows.Thickness(0, 0, 14, 0)
+            $tr = New-Object Windows.Controls.WrapPanel
+            $nm = New-Tb $svc.Display 13.5 "#EDEDF5"; $nm.TextWrapping = "NoWrap"; $nm.TextTrimming = "CharacterEllipsis"
+            [void]$tr.Children.Add($nm)
+            if ($svc.Category -eq "rec") { [void]$tr.Children.Add((New-Badge ((T "SvBadgeRec") -f (T "SvMode_$($svc.RecStart)")) "#2A2350" "#C4B5FD")) }
+            if ($svc.RecStart -and $svc.Risk -eq "caution") { [void]$tr.Children.Add((New-Badge (T "SvBadgeCaution") "#3A2E10" "#FCD34D")) }
+            if (-not $svc.IsMicrosoft) { [void]$tr.Children.Add((New-Badge (T "SvBadgeThird") "#1E2A44" "#7DD3FC")) }
+            elseif (-not $svc.RecStart) { [void]$tr.Children.Add((New-Badge (T "SvBadgeWin") "#1C1C2C" "#8A8AA6")) }
+            $reason = if ($script:Lang -eq "TR") { $svc.ReasonTR } else { $svc.ReasonEN }
+            if (-not $reason) { $reason = $svc.Description }
+            if ($reason.Length -gt 170) { $reason = $reason.Substring(0, 167) + "…" }
+            $ds = New-Tb $reason 11.5 $(if ($svc.ReasonTR) { "#B4B4CC" } else { "#7A7A94" }); $ds.Margin = New-Object Windows.Thickness(0, 3, 0, 0)
+            $state = if ($svc.State -eq "Running") { T "SvRun" } else { T "SvStop" }
+            $metaParts = @($state, $svc.Name)
+            if ($svc.Company) { $metaParts = @($svc.Company) + $metaParts }
+            if ($svc.Mem -gt 1MB) { $metaParts += Fmt-GB $svc.Mem }
+            $mt = New-Tb ($metaParts -join "  ·  ") 10.5 "#6A6A86"; $mt.Margin = New-Object Windows.Thickness(0, 3, 0, 0)
+            $mt.TextWrapping = "NoWrap"; $mt.TextTrimming = "CharacterEllipsis"
+            [void]$txt.Children.Add($tr); [void]$txt.Children.Add($ds); [void]$txt.Children.Add($mt)
+
+            $undo = New-Object Windows.Controls.Button
+            $undo.Style = $sec; $undo.Height = 30; $undo.Padding = New-Object Windows.Thickness(10, 0, 10, 0); $undo.FontSize = 11.5
+            $undo.Content = T "SvUndo"; $undo.Tag = $svc; $undo.Margin = New-Object Windows.Thickness(0, 0, 10, 0); $undo.VerticalAlignment = "Center"
+            $undo.Visibility = if ($svc.Original -and $svc.Original -ne $svc.StartMode) { "Visible" } else { "Collapsed" }
+            $undo.Add_Click({ param($s) Restore-ServiceUi $s.Tag })
+
+            $modes = New-Object Windows.Controls.StackPanel; $modes.Orientation = "Horizontal"; $modes.VerticalAlignment = "Center"
+            foreach ($m in @("Automatic", "Manual", "Disabled")) {
+                $rb = New-Object Windows.Controls.RadioButton
+                $rb.Style = $seg; $rb.GroupName = "svc_" + $svc.Name; $rb.Content = T "SvMode_$m"; $rb.FontSize = 11.5
+                $rb.Tag = @{ Svc = $svc; Mode = $m }; $rb.IsChecked = ($svc.StartMode -eq $m)
+                if ($m -eq "Disabled") { $rb.Margin = New-Object Windows.Thickness(0) }
+                if ($svc.StartMode -notin @("Automatic", "Manual", "Disabled")) { $rb.IsEnabled = $false }
+                $rb.Add_Click({ param($s) Set-ServiceUi $s.Tag.Svc $s.Tag.Mode })
+                [void]$modes.Children.Add($rb)
+            }
+            [Windows.Controls.Grid]::SetColumn($txt, 1); [Windows.Controls.Grid]::SetColumn($undo, 2); [Windows.Controls.Grid]::SetColumn($modes, 3)
+            [void]$g.Children.Add($ib); [void]$g.Children.Add($txt); [void]$g.Children.Add($undo); [void]$g.Children.Add($modes)
+            $row.Child = $g
+            [void]$stack.Children.Add($row)
+        }
+        [void]$list.Children.Add($card)
+    }
+
+    function Set-ServiceUi($svc, [string]$Mode) {
+        if ($svc.StartMode -eq $Mode -or $script:SvcBusy) { Build-ServiceList; return }
+        if ($Mode -eq "Disabled" -and $svc.IsMicrosoft -and -not $svc.RecStart) {
+            if (-not (Show-WoDialog -Title (T "SvWarnTitle") -Message ((T "SvWarnMsg") -f $svc.Display) -Kind "warn" -Ok (T "SvContinue") -Cancel (T "DlgCancel") -Danger)) { Build-ServiceList; return }
+        } elseif ($svc.Risk -eq "caution" -and $Mode -ne "Automatic") {
+            if (-not (Show-WoDialog -Title (T "SvCautionTitle") -Message ($svc.Display + "`n`n" + $(if ($script:Lang -eq "TR") { $svc.ReasonTR } else { $svc.ReasonEN })) -Kind "warn" -Ok (T "SvContinue") -Cancel (T "DlgCancel"))) { Build-ServiceList; return }
+        }
+        $script:SvcBusy = $true
+        $script:SvcPending = @{ Svc = $svc; Mode = $Mode }
+        Set-Status ((T "SvChanged") -f $svc.Display, (T "SvMode_$Mode")) "busy"
+        Start-Bg -Work {
+            param($M1, $M2, $Name, $Mode, $Cur)
+            . $M1; . $M2
+            Set-WoServiceStart $Name $Mode $Cur
+            (Get-Service -Name $Name).Status.ToString()
+        } -ArgList @((Join-Path $AppDir "modules\Startup.ps1"), (Join-Path $AppDir "modules\Services.ps1"), $svc.Name, $Mode, $svc.StartMode) -Done {
+            param($out, $err)
+            $script:SvcBusy = $false
+            $p = $script:SvcPending; $svc = $p.Svc
+            if ($err) { Set-Status ((T "SvFail") -f $svc.Display, $err) "err"; Build-ServiceList; return }
+            if (-not $svc.Original) { $svc.Original = $svc.StartMode }
+            $svc.StartMode = $p.Mode
+            $st = @($out) | Select-Object -Last 1
+            if ($st) { $svc.State = $st }
+            Update-ServiceItem $svc
+            Build-ServiceList
+            Set-Status ((T "SvChanged") -f $svc.Display, (T "SvMode_$($p.Mode)")) "ok"
+        }
+    }
+
+    function Restore-ServiceUi($svc) {
+        if ($script:SvcBusy) { return }
+        $script:SvcBusy = $true
+        $script:SvcPending = @{ Svc = $svc }
+        Start-Bg -Work {
+            param($M1, $M2, $Name)
+            . $M1; . $M2
+            Restore-WoService $Name
+            $s = Get-CimInstance Win32_Service -Filter "Name='$Name'"
+            @($s.StartMode, $s.State)
+        } -ArgList @((Join-Path $AppDir "modules\Startup.ps1"), (Join-Path $AppDir "modules\Services.ps1"), $svc.Name) -Done {
+            param($out, $err)
+            $script:SvcBusy = $false
+            $svc = $script:SvcPending.Svc
+            if ($err) { Set-Status ((T "SvFail") -f $svc.Display, $err) "err"; return }
+            $o = @($out)
+            $svc.StartMode = @{ Auto = "Automatic"; Manual = "Manual"; Disabled = "Disabled" }["$($o[0])"]
+            $svc.State = "$($o[1])"; $svc.Original = $null
+            Update-ServiceItem $svc
+            Build-ServiceList
+            Set-Status ((T "SvRestored") -f $svc.Display) "ok"
+        }
+    }
+
+    function Apply-SafeServiceRecs {
+        $targets = @($script:Services | Where-Object { $_.Category -eq "rec" -and $_.Risk -eq "safe" })
+        if ($targets.Count -eq 0 -or $script:SvcBusy) { return }
+        $names = ($targets | ForEach-Object { "•  $($_.Display) → $(T "SvMode_$($_.RecStart)")" }) -join "`n"
+        if (-not (Show-WoDialog -Title (T "SvRecTitle") -Message (((T "SvRecMsg") -f $targets.Count) + "`n`n" + $names) -Kind "info" -Ok (T "SvApply") -Cancel (T "DlgCancel"))) { return }
+        $script:SvcBusy = $true
+        (N "BtnSvApplyRec").IsEnabled = $false
+        Set-Status (T "Applying") "busy"
+        $jobs = @($targets | ForEach-Object { @{ Name = $_.Name; Mode = $_.RecStart; Cur = $_.StartMode } })
+        Start-Bg -Work {
+            param($M1, $M2, $Jobs)
+            . $M1; . $M2
+            foreach ($j in $Jobs) {
+                try { Set-WoServiceStart $j.Name $j.Mode $j.Cur; [pscustomobject]@{ Name = $j.Name; Ok = $true } }
+                catch { [pscustomobject]@{ Name = $j.Name; Ok = $false; Err = $_.Exception.Message } }
+            }
+        } -ArgList @((Join-Path $AppDir "modules\Startup.ps1"), (Join-Path $AppDir "modules\Services.ps1"), $jobs) -Done {
+            param($out, $err)
+            $script:SvcBusy = $false
+            $ok = @($out | Where-Object Ok).Count
+            foreach ($f in @($out | Where-Object { -not $_.Ok })) { Write-WoLog "Servis ($($f.Name)): $($f.Err)" }
+            Set-Status ((T "SvRecDone") -f $ok) $(if ($ok -eq @($out).Count) { "ok" } else { "warn" })
+            Load-Services
+        }
+    }
+
+    (N "BtnSvRefresh").Add_Click({ Load-Services })
+    (N "BtnSvApplyRec").Add_Click({ Apply-SafeServiceRecs })
+    foreach ($f in @("SvFRec", "SvFThird", "SvFRun", "SvFAll")) {
+        (N $f).Add_Checked({ param($s) $script:SvcFilter = $s.Tag; if ($script:SvcLoaded) { Build-ServiceList; (N "SvScroll").ScrollToTop() } })
+    }
+    (N "SvSearch").Add_TextChanged({
+        (N "SvSearchHint").Visibility = if ((N "SvSearch").Text) { "Collapsed" } else { "Visible" }
+        if ($script:SvcLoaded) { Build-ServiceList }
+    })
 
     # ================= DİSK =================
     $script:DiskScan = @{}
@@ -2154,8 +2562,7 @@ try {
         $bytes = Update-CleanSummary
         $msg = (T "DcConfirm") -f (Fmt-Size $bytes)
         if ($ids -contains "Recycle") { $msg += T "DcRecycleConfirm" }
-        $res = [Windows.MessageBox]::Show($window, $msg, "Windows Optimizer", "YesNo", "Warning")
-        if ("$res" -ne "Yes") { return }
+        if (-not (Show-WoDialog -Title (T "DcConfirmTitle") -Message $msg -Kind "warn" -Ok (T "DcConfirmOk") -Cancel (T "DlgCancel") -Danger)) { return }
 
         $script:DiskBusy = $true
         (N "BtnDiskClean").IsEnabled = $false; (N "BtnDiskScan").IsEnabled = $false
@@ -2196,7 +2603,7 @@ try {
         "ResTitle", "ResNone", "ResGainSub", "ResColBefore", "ResColAfter", "ResRowInUse", "ResRowStandby", "ResRowModified", "ResRowAvail",
         "ProcTitle", "MemNote", "SetLangT", "SetLangD", "SetUpdT", "BtnCheckUpdate", "SetShortcutT", "SetShortcutD", "BtnFixShortcut",
         "SetRestoreT", "SetRestoreD", "BtnRestore2", "SetLogT", "SetLogD", "BtnOpenLog", "SetAboutT", "AdminBadge",
-        "SuHint", "BtnSuTaskMgr", "BtnSuRefresh", "DcTitle", "DcSub", "BtnDiskScan", "DcSelTitle", "BtnDiskClean", "DcNote", "BtnCleanMgr"
+        "SuHint", "BtnSuTaskMgr", "BtnSuRefresh", "SvHint", "BtnSvRefresh", "BtnSvApplyRec", "SvSearchHint", "BtnSuDisableJunk", "DcTitle", "DcSub", "BtnDiskScan", "DcSelTitle", "BtnDiskClean", "DcNote", "BtnCleanMgr"
     )
     function Apply-Language {
         foreach ($n in $LocNames) {
@@ -2218,6 +2625,7 @@ try {
         (N "CpuSub").Text = (T "CpuSub") -f [Environment]::ProcessorCount, [Diagnostics.Process]::GetProcesses().Length
         if ($script:TweakRows.Count -gt 0) { Build-TweakList }
         if ($script:StartupLoaded) { Build-StartupList } else { (N "SuSummary").Text = T "SuLoading" }
+        if ($script:SvcLoaded) { Build-ServiceList } else { (N "SvSummary").Text = T "SvLoading" }
         if ($script:Page -eq "Disk") { Show-Drives }
         Build-CleanList
         (N "Lang$($script:Lang)").IsChecked = $true
@@ -2275,9 +2683,18 @@ try {
                 5  { & $snap "2-Tweaks"; Show-Page "Memory" }
                 8  { & $snap "3-Memory"; Start-RamClean }
                 12 { & $snap "4-Memory-after"; Show-Page "Startup" }
-                16 { & $snap "5-Startup"; Show-Page "Disk" }
+                16 { & $snap "5-Startup"; Show-Page "Services" }
+                20 { & $snap "5b-Services"; Show-Page "Disk" }
                 24 { & $snap "6-Disk"; Show-Page "Settings" }
-                25 { & $snap "7-Settings"; $window.Close() }
+                25 { & $snap "7-Settings"
+                     $script:SnapDlg = New-WoDialog -Title (T "DcConfirmTitle") -Message (((T "DcConfirm") -f "11,51 GB") + (T "DcRecycleConfirm")) -Kind "warn" -Ok (T "DcConfirmOk") -Cancel (T "DlgCancel") -Danger
+                     $script:SnapDlg.Show() }
+                26 { $root = $script:SnapDlg.Content
+                     $rtb = New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$root.ActualWidth, [int]$root.ActualHeight, 96, 96, [Windows.Media.PixelFormats]::Pbgra32)
+                     $rtb.Render($root); $enc = New-Object Windows.Media.Imaging.PngBitmapEncoder
+                     $enc.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($rtb))
+                     $fs = [IO.File]::Create((Join-Path $Snapshot "8-Dialog.png")); $enc.Save($fs); $fs.Close()
+                     $script:SnapDlg.Close(); $window.Close() }
             }
         })
         $snapTimer.Start()
@@ -2289,5 +2706,6 @@ try {
 catch {
     $err = "HATA: $($_.Exception.Message)`r`nSATIR: $($_.InvocationInfo.ScriptLineNumber)`r`n$($_.ScriptStackTrace)"
     Write-WoLog $err
-    try { [Windows.MessageBox]::Show($err, "Windows Optimizer - Hata", "OK", "Error") | Out-Null } catch { Write-Host $err -ForegroundColor Red }
+    try { [void](Show-WoDialog -Title "Windows Optimizer - Hata" -Message $err -Kind "error") }
+    catch { try { [Windows.MessageBox]::Show($err, "Windows Optimizer - Hata", "OK", "Error") | Out-Null } catch { Write-Host $err -ForegroundColor Red } }
 }

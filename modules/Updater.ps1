@@ -7,7 +7,7 @@ $WoDefaultFiles = @(
     "WindowsOptimizer.ps1", "config.json", "version.json",
     "assets/logo.png", "assets/banner.png",
     "modules/Tweaks.ps1", "modules/RamCleaner.ps1", "modules/Updater.ps1",
-    "modules/Startup.ps1", "modules/DiskCleaner.ps1"
+    "modules/Startup.ps1", "modules/DiskCleaner.ps1", "modules/Services.ps1"
 )
 # Eski surumlerden kalan, artik kullanilmayan dosyalar
 $WoObsoleteFiles = @("modules/AdsBlocker.ps1", "modules/FeatureManager.ps1", "modules/BackgroundManager.ps1")
