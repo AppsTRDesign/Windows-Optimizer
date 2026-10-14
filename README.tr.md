@@ -6,23 +6,27 @@
 
 Windows 10/11 için modüler, açık kaynaklı bir performans ve gizlilik aracı. Reklamları ve telemetriyi kapatır, arka plan etkinliğini azaltır ve RAM'i temizler. Canlı bellek grafiği sayesinde her optimizasyonun etkisini **gözünüzle görebilirsiniz**.
 
-> **Sürüm 2.0**: Yeni arayüz, canlı RAM izleme, gerçek durumu gösterilen ve geri alınabilen 26 optimizasyon, ilerleme çubuklu güvenli uygulama içi güncelleme.
+> **Sürüm 2.1**: Başlangıç yöneticisi, disk temizleyici, gizlilik izinleri ve oyun performansı kategorileriyle 43 optimizasyon, canlı RAM izleme, ilerleme çubuklu güvenli güncelleme.
 
 ## ✨ Özellikler
 
 | Sayfa | Ne yapar |
 |-------|----------|
 | 🏠 **Genel Bakış** | Canlı CPU / RAM / disk kullanımı ve mini grafikler, sistem bilgisi, optimizasyon skoru, hızlı işlemler |
-| ⚡ **Optimizasyonlar** | 4 kategoride 26 ayar. Her ayarın **mevcut durumu sistemden okunur**; kapatırsanız Windows varsayılanına döner |
+| ⚡ **Optimizasyonlar** | 6 kategoride 43 ayar. Her ayarın **mevcut durumu sistemden okunur**; kapatırsanız Windows varsayılanına döner |
 | 🧠 **Bellek (RAM)** | Son 2 dakikanın canlı grafiği (kullanımda / değiştirilmiş / standby), tek tıkla temizlik, önce/sonra sonuçları, en çok bellek kullanan uygulamalar, kullanım eşiğine göre otomatik temizlik |
+| 🚀 **Başlangıç** | Windows açılırken çalışan tüm programlar (kayıt defteri, başlangıç klasörü, zamanlanmış görevler); simge, yayıncı ve komut satırıyla listelenir, tek tıkla açılıp kapatılır. Görev Yöneticisi ile uyumludur |
+| 🧹 **Disk Temizleme** | Tüm disklerin kapasite kartları; geçici dosyalar, Windows Update önbelleği, tarayıcı önbellekleri, hata dökümleri, shader önbelleği, Geri Dönüşüm Kutusu taranır, boyutları gösterilir, seçilenler temizlenir |
 | ⚙️ **Ayarlar** | Dil (TR/EN), güncelleme denetimi, kısayol onarma, sistem geri yükleme noktası, günlük dosyası |
 
 ### Optimizasyon kategorileri
 
 - **Reklamlar & Gizlilik:** Dosya Gezgini reklamları, kilit ekranı ipuçları, Ayarlar önerileri, Windows ipuçları, "Hoş geldiniz" ekranı, "Cihazınızı kurmayı bitirin" hatırlatıcısı, Başlat menüsü reklamları ve sessiz uygulama kurulumları, önerilen bildirimler, reklam kimliği, uyarlanmış deneyimler, etkinlik geçmişi
+- **Gizlilik İzinleri:** Konum, mikrofon, kamera, kişisel verilere (kişiler, takvim, arama geçmişi, e-posta, mesajlar) erişim, uygulama tanılama, çevrimiçi konuşma tanıma, yazma kişiselleştirmesi
 - **Arama, Edge & Copilot:** Başlat aramasındaki Bing sonuçları, Edge arama çubuğu, Edge önerileri, alışveriş asistanı ve kenar çubuğu, Windows Copilot, Pencere öğeleri / Haber ve ilgi alanları
 - **Sistem & Telemetri:** Telemetri (DiagTrack servisi dahil), Cortana, tüketici özellikleri, geri bildirim istekleri, Windows Hata Raporlama
-- **Performans:** Edge'in arka planda çalışması ve Startup Boost, başlangıç uygulaması gecikmesi, menü açılma gecikmesi, Xbox Game DVR, arka plandaki Mağaza uygulamaları
+- **Performans:** Edge'in arka planda çalışması ve Startup Boost, başlangıç uygulaması gecikmesi, menü açılma gecikmesi, arka plandaki Mağaza uygulamaları, görsel efektler, şeffaflık, hazırda bekletme, güncellemelerin P2P paylaşımı
+- **Oyun Performansı:** Oyun Modu, oyunlara yüksek CPU/GPU önceliği (MMCSS), Nihai Performans güç planı, donanım hızlandırmalı GPU zamanlaması, tam ekran optimizasyonları, fare ivmesi, Xbox Game DVR
 
 **ÖNERİLEN** etiketli ayarlar çoğu kullanıcı için güvenlidir. Genel Bakış sayfasındaki **Önerilenleri Uygula** düğmesi hepsini tek seferde etkinleştirir.
 
@@ -89,6 +93,8 @@ Windows-Optimizer/
 └── modules/
     ├── Tweaks.ps1           # Optimizasyon kataloğu + uygulama/geri alma motoru
     ├── RamCleaner.ps1       # Canlı bellek ölçümü + temizlik (yerel API)
+    ├── Startup.ps1          # Başlangıç uygulamaları yöneticisi
+    ├── DiskCleaner.ps1      # Disk kapasitesi + gereksiz dosya temizliği
     └── Updater.ps1          # Sürüm denetimi, indirme, kısayollar
 ```
 

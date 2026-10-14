@@ -6,23 +6,27 @@
 
 A modular, open-source performance & privacy tool for Windows 10/11. It disables ads and telemetry, trims background activity and cleans RAM, with a live memory graph so you can **see** the effect of every optimization.
 
-> **Version 2.0** — new interface, live RAM monitoring, 26 optimizations that show their real state and can be reverted, and a safe in-app updater with a progress bar.
+> **Version 2.1** — startup manager, disk cleaner, 43 optimizations including privacy permissions and gaming performance, live RAM monitoring and a safe in-app updater with a progress bar.
 
 ## ✨ Features
 
 | Page | What it does |
 |------|--------------|
 | 🏠 **Overview** | Live CPU / RAM / disk usage with sparklines, system info, optimization score and quick actions |
-| ⚡ **Optimizations** | 26 tweaks in 4 categories. Each setting's **current state is read from the system**; turning it off restores the Windows default |
+| ⚡ **Optimizations** | 43 tweaks in 6 categories. Each setting's **current state is read from the system**; turning it off restores the Windows default |
 | 🧠 **Memory (RAM)** | Live 2-minute stacked graph (in use / modified / standby), one-click cleaning, before/after results, top memory consumers, auto-clean by usage threshold |
+| 🚀 **Startup** | Every program that runs at boot (registry, Startup folder, scheduled tasks) with icon, publisher and command line; toggle with one click. Compatible with Task Manager |
+| 🧹 **Disk Cleanup** | Capacity cards for all drives; scans temp files, Windows Update cache, browser caches, crash dumps, shader cache and Recycle Bin, shows sizes and cleans the selected ones |
 | ⚙️ **Settings** | Language (TR/EN), update check, shortcut repair, system restore point, log file |
 
 ### Optimization categories
 
 - **Ads & Privacy:** File Explorer ads, lock screen tips, Settings suggestions, Windows tips, Welcome Experience, "Finish setting up" nag, Start menu ads & silent app installs, suggested notifications, advertising ID, tailored experiences, activity history
+- **Privacy Permissions:** Location, microphone, camera, access to personal data (contacts, calendar, call history, email, messages), app diagnostics, online speech recognition, typing personalization
 - **Search, Edge & Copilot:** Bing results in Start search, Edge search bar, Edge suggestions/shopping/sidebar, Windows Copilot, Widgets / News and interests
 - **System & Telemetry:** Telemetry (incl. DiagTrack service), Cortana, consumer features, feedback requests, Windows Error Reporting
-- **Performance:** Edge background mode & Startup Boost, startup app delay, menu show delay, Xbox Game DVR, background Store apps
+- **Performance:** Edge background mode & Startup Boost, startup app delay, menu show delay, background Store apps, visual effects, transparency, hibernation, P2P update sharing
+- **Gaming Performance:** Game Mode, high CPU/GPU priority for games (MMCSS), Ultimate Performance power plan, hardware-accelerated GPU scheduling, fullscreen optimizations, mouse acceleration, Xbox Game DVR
 
 Settings marked **RECOMMENDED** are safe for most users. **Apply Recommended** on the Overview page enables all of them at once.
 
@@ -89,6 +93,8 @@ Windows-Optimizer/
 └── modules/
     ├── Tweaks.ps1           # Optimization catalog + apply/revert engine
     ├── RamCleaner.ps1       # Live memory measurement + cleaning (native API)
+    ├── Startup.ps1          # Startup apps manager
+    ├── DiskCleaner.ps1      # Drive capacity + junk file cleanup
     └── Updater.ps1          # Version check, download, shortcuts
 ```
 

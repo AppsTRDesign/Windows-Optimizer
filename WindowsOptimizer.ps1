@@ -27,6 +27,8 @@ function Write-WoLog([string]$Msg) {
 . (Join-Path $AppDir "modules\RamCleaner.ps1")
 . (Join-Path $AppDir "modules\Tweaks.ps1")
 . (Join-Path $AppDir "modules\Updater.ps1")
+. (Join-Path $AppDir "modules\Startup.ps1")
+. (Join-Path $AppDir "modules\DiskCleaner.ps1")
 
 # Konsol penceresini gizle (kisayol zaten gizli baslatir; dogrudan calistirma icin)
 if (-not $Snapshot) { try { [void][WoNative]::ShowWindow([WoNative]::GetConsoleWindow(), 0) } catch {} }
@@ -117,6 +119,27 @@ TR = @{
     SetAboutT = "Hakkında"
     ExplorerBusy = "Explorer yeniden başlatılıyor…"; ExplorerOK = "Explorer yeniden başlatıldı"
     StatusReady = "Hazır"; AdminBadge = "Yönetici modu"
+    NeedReboot = "Yeniden başlatma gerekir"; RebootHint = " · Bazı ayarlar bilgisayar yeniden başlatıldığında etkinleşir"
+    NavStartup = "Başlangıç"; NavDisk = "Disk Temizleme"
+    Title_Startup = "Başlangıç Uygulamaları"; Sub_Startup = "Windows açılırken çalışan programları yönetin — açılışı hızlandırın"
+    Title_Disk = "Disk Temizleme"; Sub_Disk = "Disk kapasiteleri ve gereksiz dosyalar"
+    SuSummary = "{0} başlangıç öğesi · {1} etkin"; SuLoading = "Başlangıç öğeleri taranıyor…"
+    SuHint = "Kapattığınız öğeler silinmez, sadece Windows açılırken başlamaz. Görev Yöneticisi ile uyumludur."
+    BtnSuTaskMgr = "Görev Yöneticisi"; BtnSuRefresh = "Yenile"
+    SuGroupOn = "ETKİN"; SuGroupOff = "DEVRE DIŞI"
+    Src_RegUser = "Kayıt defteri (kullanıcı)"; Src_RegMachine = "Kayıt defteri (tüm kullanıcılar)"
+    Src_FolderUser = "Başlangıç klasörü"; Src_FolderCommon = "Başlangıç klasörü (ortak)"; Src_Task = "Zamanlanmış görev"
+    SuCritical = "SİSTEM"; SuMissing = "DOSYA YOK"; SuOpen = "Konumu aç"
+    SuToggledOn = "{0} başlangıçta açılacak"; SuToggledOff = "{0} artık başlangıçta açılmayacak"; SuFail = "{0} değiştirilemedi: {1}"
+    DcTitle = "Gereksiz Dosyalar"; DcSub = "Taranan kategorileri seçin ve temizleyin"
+    BtnDiskScan = "Yeniden tara"; DcScanning = "Taranıyor…"; DcSelTitle = "SEÇİLİ ALAN"; DcSelFiles = "{0:N0} dosya · {1} kategori"
+    BtnDiskClean = "Seçilenleri Temizle"; DcCleaning = "Temizleniyor…"
+    DcResult = "{0} boşaltıldı"; DcResultSub = "{0:N0} dosya silindi · {1:N0} dosya kullanımda olduğu için atlandı"
+    DcNote = "Kullanımdaki dosyalar ve son 24 saatte değişen geçici dosyalar atlanır. Tarayıcı geçmişi, şifreler ve çerezler silinmez."
+    BtnCleanMgr = "Windows Disk Temizleme"; DcConfirm = "{0} kalıcı olarak silinecek.`n`nDevam edilsin mi?"
+    DcRecycleConfirm = "`n`nGeri Dönüşüm Kutusu da kalıcı olarak boşaltılacak."
+    DcDone = "Disk temizliği tamamlandı: {0} boşaltıldı"
+    DriveFree = "{0} boş / {1}"; DriveSystem = "SİSTEM"; DriveLocal = "Yerel Disk"
 }
 EN = @{
     NavCaption = "MENU"; NavHome = "Overview"; NavTweaks = "Optimizations"; NavMemory = "Memory (RAM)"; NavSettings = "Settings"
@@ -177,6 +200,27 @@ EN = @{
     SetAboutT = "About"
     ExplorerBusy = "Restarting Explorer…"; ExplorerOK = "Explorer restarted"
     StatusReady = "Ready"; AdminBadge = "Administrator mode"
+    NeedReboot = "Requires restart"; RebootHint = " · Some settings take effect after restarting the PC"
+    NavStartup = "Startup"; NavDisk = "Disk Cleanup"
+    Title_Startup = "Startup Apps"; Sub_Startup = "Manage programs that run when Windows starts — boot faster"
+    Title_Disk = "Disk Cleanup"; Sub_Disk = "Drive capacity and junk files"
+    SuSummary = "{0} startup items · {1} enabled"; SuLoading = "Scanning startup items…"
+    SuHint = "Disabled items are not deleted, they just don't start with Windows. Compatible with Task Manager."
+    BtnSuTaskMgr = "Task Manager"; BtnSuRefresh = "Refresh"
+    SuGroupOn = "ENABLED"; SuGroupOff = "DISABLED"
+    Src_RegUser = "Registry (user)"; Src_RegMachine = "Registry (all users)"
+    Src_FolderUser = "Startup folder"; Src_FolderCommon = "Startup folder (common)"; Src_Task = "Scheduled task"
+    SuCritical = "SYSTEM"; SuMissing = "FILE MISSING"; SuOpen = "Open location"
+    SuToggledOn = "{0} will start with Windows"; SuToggledOff = "{0} will no longer start with Windows"; SuFail = "Could not change {0}: {1}"
+    DcTitle = "Junk Files"; DcSub = "Select scanned categories and clean"
+    BtnDiskScan = "Rescan"; DcScanning = "Scanning…"; DcSelTitle = "SELECTED"; DcSelFiles = "{0:N0} files · {1} categories"
+    BtnDiskClean = "Clean Selected"; DcCleaning = "Cleaning…"
+    DcResult = "{0} freed"; DcResultSub = "{0:N0} files deleted · {1:N0} files skipped (in use)"
+    DcNote = "Files in use and temp files changed in the last 24 hours are skipped. Browser history, passwords and cookies are not deleted."
+    BtnCleanMgr = "Windows Disk Cleanup"; DcConfirm = "{0} will be permanently deleted.`n`nContinue?"
+    DcRecycleConfirm = "`n`nThe Recycle Bin will also be permanently emptied."
+    DcDone = "Disk cleanup complete: {0} freed"
+    DriveFree = "{0} free / {1}"; DriveSystem = "SYSTEM"; DriveLocal = "Local Disk"
 }
 }
 $script:Lang = $Settings.language
@@ -547,6 +591,8 @@ $xaml = @'
           <RadioButton x:Name="NavHome"     DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE80F;" IsChecked="True"/>
           <RadioButton x:Name="NavTweaks"   DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE945;"/>
           <RadioButton x:Name="NavMemory"   DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE9D9;"/>
+          <RadioButton x:Name="NavStartup"  DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE7E8;"/>
+          <RadioButton x:Name="NavDisk"     DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xEDA2;"/>
           <RadioButton x:Name="NavSettings" DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE713;"/>
 
           <StackPanel DockPanel.Dock="Bottom" Margin="0,0,0,16">
@@ -945,6 +991,66 @@ $xaml = @'
             </StackPanel>
           </ScrollViewer>
 
+          <!-- ============ STARTUP ============ -->
+          <Grid x:Name="PageStartup" Visibility="Collapsed">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <Border Style="{StaticResource Card}" Padding="18,12" Margin="0,0,14,0">
+              <Grid>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,330,0">
+                  <TextBlock x:Name="SuSummary" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource Txt}"/>
+                  <TextBlock x:Name="SuHint" Style="{StaticResource Desc}" Margin="0,4,0,0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                  <Button x:Name="BtnSuTaskMgr" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"/>
+                  <Button x:Name="BtnSuRefresh" Style="{StaticResource SecondaryBtn}"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <ScrollViewer Grid.Row="1" Margin="0,14,0,0">
+              <StackPanel x:Name="StartupList" Margin="0,0,14,20"/>
+            </ScrollViewer>
+          </Grid>
+
+          <!-- ============ DISK ============ -->
+          <ScrollViewer x:Name="PageDisk" Visibility="Collapsed">
+            <StackPanel Margin="0,0,14,20">
+              <UniformGrid x:Name="DriveList" Columns="4"/>
+              <Grid Margin="0,14,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="300"/></Grid.ColumnDefinitions>
+                <Border Style="{StaticResource Card}" Padding="0">
+                  <StackPanel>
+                    <Grid Margin="20,16,20,12">
+                      <StackPanel>
+                        <TextBlock x:Name="DcTitle" Style="{StaticResource CardTitle}"/>
+                        <TextBlock x:Name="DcSub" Style="{StaticResource Desc}" Margin="0,3,0,0"/>
+                      </StackPanel>
+                      <Button x:Name="BtnDiskScan" Style="{StaticResource SecondaryBtn}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+                    <StackPanel x:Name="CleanList"/>
+                  </StackPanel>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource Card}" VerticalAlignment="Top">
+                  <StackPanel>
+                    <TextBlock x:Name="DcSelTitle" Style="{StaticResource Caption}"/>
+                    <TextBlock x:Name="DcSelBytes" Text="—" FontSize="32" FontWeight="Bold" Foreground="White" Margin="0,6,0,0"/>
+                    <TextBlock x:Name="DcSelFiles" Style="{StaticResource Desc}"/>
+                    <Button x:Name="BtnDiskClean" Style="{StaticResource PrimaryBtn}" Height="44" Margin="0,16,0,0" IsEnabled="False"/>
+                    <Border x:Name="DcResultBox" Visibility="Collapsed" Background="#0F2E25" BorderBrush="#1F5C47" BorderThickness="1" CornerRadius="9" Padding="12,10" Margin="0,14,0,0">
+                      <StackPanel>
+                        <TextBlock x:Name="DcResult" FontSize="18" FontWeight="Bold" Foreground="#34D399"/>
+                        <TextBlock x:Name="DcResultSub" FontSize="11" Foreground="#9FD8C2" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                      </StackPanel>
+                    </Border>
+                    <Border Background="#171726" CornerRadius="8" Padding="12,10" Margin="0,14,0,0">
+                      <TextBlock x:Name="DcNote" Style="{StaticResource Desc}" FontSize="11"/>
+                    </Border>
+                    <Button x:Name="BtnCleanMgr" Style="{StaticResource SecondaryBtn}" Margin="0,12,0,0"/>
+                  </StackPanel>
+                </Border>
+              </Grid>
+            </StackPanel>
+          </ScrollViewer>
+
           <!-- ============ SETTINGS ============ -->
           <ScrollViewer x:Name="PageSettings" Visibility="Collapsed">
             <StackPanel Margin="0,0,14,20" MaxWidth="860" HorizontalAlignment="Left">
@@ -1077,7 +1183,8 @@ try {
     }
 
     # ---------------- SAYFALAR ----------------
-    $Pages = @{ Home = "PageHome"; Tweaks = "PageTweaks"; Memory = "PageMemory"; Settings = "PageSettings" }
+    $Pages = @{ Home = "PageHome"; Tweaks = "PageTweaks"; Memory = "PageMemory"; Startup = "PageStartup"; Disk = "PageDisk"; Settings = "PageSettings" }
+    $PageOrder = @("Home", "Tweaks", "Memory", "Startup", "Disk", "Settings")
     $script:Page = "Home"
     function Show-Page([string]$Name) {
         $script:Page = $Name
@@ -1086,9 +1193,11 @@ try {
         (N "PageSub").Text   = T "Sub_$Name"
         (N "Nav$Name").IsChecked = $true
         if ($Name -eq "Memory") { $window.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background, [Action]{ Draw-MemChart; Refresh-ProcList }) | Out-Null }
+        if ($Name -eq "Startup" -and -not $script:StartupLoaded) { Load-Startup }
+        if ($Name -eq "Disk") { (N "PageDisk").ScrollToTop(); Show-Drives; if (-not $script:DiskScanned) { Start-DiskScan } }
         if ($Name -eq "Home") { $window.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background, [Action]{ Draw-Sparks }) | Out-Null }
     }
-    foreach ($p in @("Home", "Tweaks", "Memory", "Settings")) {
+    foreach ($p in $PageOrder) {
         (N "Nav$p").Add_Checked({ param($s) $n = $s.Name.Substring(3); if ($script:Page -ne $n) { Show-Page $n } })
     }
 
@@ -1164,7 +1273,8 @@ try {
                 $desc = New-Tb $t[$script:Lang][1] 11.5 "#7A7A94"; $desc.Margin = New-Object Windows.Thickness(0, 3, 0, 0)
                 [void]$txt.Children.Add($titleRow); [void]$txt.Children.Add($desc)
                 if ($t.Restart) {
-                    $rs = New-Tb ("↻ " + (T $(if ($t.Restart -eq "explorer") { "NeedExplorer" } else { "NeedLogoff" }))) 10.5 "#A1885A"
+                    $rsKey = @{ explorer = "NeedExplorer"; logoff = "NeedLogoff"; reboot = "NeedReboot" }[$t.Restart]
+                    $rs = New-Tb ("↻ " + (T $rsKey)) 10.5 "#A1885A"
                     $rs.Margin = New-Object Windows.Thickness(0, 3, 0, 0)
                     [void]$txt.Children.Add($rs)
                 }
@@ -1219,13 +1329,13 @@ try {
         $summary = (T "TwSummary") -f $active, $total
         if ($pending -gt 0) { $summary += (T "TwPending") -f $pending }
         (N "TwSummary").Text = $summary
-        (N "TwProgress").Value = [int](100 * $active / [Math]::Max(1, $total))
+        (N "TwProgress").Value = [int](100 * $active / [Math]::Max([double]1, $total))
         $btn = N "BtnApplyTweaks"
         $btn.Content = if ($pending -gt 0) { (T "BtnApplyN") -f $pending } else { T "BtnApply0" }
         $btn.IsEnabled = ($pending -gt 0) -and -not $script:Applying
 
         (N "HeroValue").Text = "$active / $total"
-        (N "HeroProgress").Value = [int](100 * $active / [Math]::Max(1, $total))
+        (N "HeroProgress").Value = [int](100 * $active / [Math]::Max([double]1, $total))
         (N "HeroHint").Text = (T "HeroHint") -f $recTotal, $recActive
     }
 
@@ -1274,7 +1384,8 @@ try {
                 $names = $fail | ForEach-Object { (Get-WoTweak $_.Id)[$script:Lang][0] }
                 $msg += " (" + ($names -join ", ") + ")"
             }
-            if ($restarts -contains "logoff") { $msg += T "LogoffHint" }
+            if ($restarts -contains "reboot") { $msg += T "RebootHint" }
+            elseif ($restarts -contains "logoff") { $msg += T "LogoffHint" }
             Set-Status $msg $(if ($fail.Count -eq 0 -and -not $err) { "ok" } else { "warn" })
         }
     }
@@ -1775,6 +1886,304 @@ try {
         (N "UpdStage").Foreground = Brush $(if ($s.Stage -eq "error") { "#F87171" } else { "#B4B4CC" })
     }
 
+    function Fmt-Size([double]$Bytes) {
+        if ($Bytes -ge 1GB) { "{0:N2} GB" -f ($Bytes / 1GB) } elseif ($Bytes -ge 1MB) { "{0:N1} MB" -f ($Bytes / 1MB) }
+        elseif ($Bytes -gt 0) { "{0:N0} KB" -f [Math]::Ceiling($Bytes / 1KB) } else { "0 MB" }
+    }
+    function New-Badge([string]$Text, [string]$Bg, [string]$Fg) {
+        $b = New-Object Windows.Controls.Border
+        $b.CornerRadius = New-Object Windows.CornerRadius(5); $b.Background = Brush $Bg
+        $b.Padding = New-Object Windows.Thickness(6, 1, 6, 1); $b.Margin = New-Object Windows.Thickness(8, 0, 0, 0)
+        $b.VerticalAlignment = "Center"
+        $t = New-Tb $Text 9.5 $Fg; $t.FontWeight = [Windows.FontWeights]::Bold; $t.TextWrapping = "NoWrap"
+        $b.Child = $t
+        return $b
+    }
+    function New-Cols($Grid, [object[]]$Widths) {
+        foreach ($w in $Widths) {
+            $cd = New-Object Windows.Controls.ColumnDefinition
+            $cd.Width = if ($w -eq "*") { New-Object Windows.GridLength(1, "Star") } elseif ($w -eq "Auto") { [Windows.GridLength]::Auto } else { New-Object Windows.GridLength([double]$w) }
+            $Grid.ColumnDefinitions.Add($cd)
+        }
+    }
+
+    # ================= BAŞLANGIÇ =================
+    Add-Type -AssemblyName System.Drawing
+    $script:StartupItems = @()
+    $script:StartupLoaded = $false
+    $script:StartupBusy = $false
+    $script:IconCache = @{}
+
+    function Get-WoIcon([string]$Path) {
+        if (-not $Path -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+        if ($script:IconCache.ContainsKey($Path)) { return $script:IconCache[$Path] }
+        $src = $null
+        try {
+            $ico = [Drawing.Icon]::ExtractAssociatedIcon($Path)
+            $src = [Windows.Interop.Imaging]::CreateBitmapSourceFromHIcon($ico.Handle, [Windows.Int32Rect]::Empty,
+                [Windows.Media.Imaging.BitmapSizeOptions]::FromEmptyOptions())
+            $src.Freeze(); $ico.Dispose()
+        } catch {}
+        $script:IconCache[$Path] = $src
+        return $src
+    }
+
+    function Load-Startup {
+        if ($script:StartupBusy) { return }
+        $script:StartupBusy = $true
+        (N "SuSummary").Text = T "SuLoading"
+        (N "BtnSuRefresh").IsEnabled = $false
+        Start-Bg -Work {
+            param($Mod)
+            . $Mod
+            Get-WoStartupItems
+        } -ArgList @((Join-Path $AppDir "modules\Startup.ps1")) -Done {
+            param($out, $err)
+            $script:StartupBusy = $false; $script:StartupLoaded = $true
+            (N "BtnSuRefresh").IsEnabled = $true
+            if ($err) { Write-WoLog "Baslangic taramasi: $err" }
+            $script:StartupItems = @($out | Where-Object { $_ -and $_.Id })
+            Build-StartupList
+        }
+    }
+
+    function Update-StartupSummary {
+        $on = @($script:StartupItems | Where-Object Enabled).Count
+        (N "SuSummary").Text = (T "SuSummary") -f $script:StartupItems.Count, $on
+    }
+
+    function Build-StartupList {
+        $list = N "StartupList"; $list.Children.Clear()
+        $cardStyle = $window.FindResource("Card"); $switchStyle = $window.FindResource("Switch")
+        $titleBtn = $window.FindResource("TitleBtn")
+        foreach ($grp in @(@{ On = $true; Key = "SuGroupOn" }, @{ On = $false; Key = "SuGroupOff" })) {
+            $items = @($script:StartupItems | Where-Object { [bool]$_.Enabled -eq $grp.On } | Sort-Object Name)
+            if ($items.Count -eq 0) { continue }
+            $cap = New-Tb ("{0}  ·  {1}" -f (T $grp.Key), $items.Count) 11 "#7A7A94"
+            $cap.FontWeight = [Windows.FontWeights]::SemiBold; $cap.Margin = New-Object Windows.Thickness(4, 0, 0, 8)
+            [void]$list.Children.Add($cap)
+            $card = New-Object Windows.Controls.Border
+            $card.Style = $cardStyle; $card.Padding = New-Object Windows.Thickness(0); $card.Margin = New-Object Windows.Thickness(0, 0, 0, 16)
+            $stack = New-Object Windows.Controls.StackPanel; $card.Child = $stack
+            $first = $true
+            foreach ($it in $items) {
+                $row = New-Object Windows.Controls.Border
+                $row.Padding = New-Object Windows.Thickness(18, 12, 18, 12)
+                if (-not $first) { $row.BorderBrush = Brush "#1E1E32"; $row.BorderThickness = New-Object Windows.Thickness(0, 1, 0, 0) }
+                $first = $false
+                $g = New-Object Windows.Controls.Grid; New-Cols $g @(46, "*", "Auto", "Auto")
+
+                # Simge (yoksa bas harf)
+                $iconBox = New-Object Windows.Controls.Border
+                $iconBox.Width = 34; $iconBox.Height = 34; $iconBox.CornerRadius = New-Object Windows.CornerRadius(9)
+                $iconBox.Background = Brush "#1C1C2E"; $iconBox.HorizontalAlignment = "Left"
+                $img = Get-WoIcon $it.Path
+                if ($img) {
+                    $im = New-Object Windows.Controls.Image; $im.Source = $img; $im.Width = 22; $im.Height = 22
+                    $iconBox.Child = $im
+                } else {
+                    $lt = New-Tb ("$($it.Name)".Substring(0, 1).ToUpper()) 14 "#A78BFA"; $lt.FontWeight = [Windows.FontWeights]::Bold
+                    $lt.HorizontalAlignment = "Center"; $lt.VerticalAlignment = "Center"; $iconBox.Child = $lt
+                }
+
+                $txt = New-Object Windows.Controls.StackPanel; $txt.Margin = New-Object Windows.Thickness(0, 0, 12, 0)
+                $tr = New-Object Windows.Controls.WrapPanel
+                $display = if ($it.Description -and $it.Description.Length -lt 60 -and $it.Name -match '_[0-9A-F]{16,}|^\{') { $it.Description } else { $it.Name }
+                $nm = New-Tb $display 13.5 "#EDEDF5"; $nm.TextWrapping = "NoWrap"; $nm.TextTrimming = "CharacterEllipsis"
+                [void]$tr.Children.Add($nm)
+                if ($it.Critical) { [void]$tr.Children.Add((New-Badge (T "SuCritical") "#3A2E10" "#FCD34D")) }
+                if (-not $it.Exists) { [void]$tr.Children.Add((New-Badge (T "SuMissing") "#3A1520" "#FCA5A5")) }
+                $pub = if ($it.Publisher) { "$($it.Publisher)  ·  " } else { "" }
+                $meta = New-Tb ($pub + (T "Src_$($it.Source)")) 11.5 "#9C9CB8"; $meta.Margin = New-Object Windows.Thickness(0, 2, 0, 0)
+                $cmd = New-Tb $it.Command 10.5 "#6A6A86"; $cmd.TextWrapping = "NoWrap"; $cmd.TextTrimming = "CharacterEllipsis"
+                $cmd.ToolTip = $it.Command; $cmd.Margin = New-Object Windows.Thickness(0, 2, 0, 0)
+                [void]$txt.Children.Add($tr); [void]$txt.Children.Add($meta); [void]$txt.Children.Add($cmd)
+
+                $open = New-Object Windows.Controls.Button
+                $open.Style = $titleBtn; $open.Content = [string][char]0xE838; $open.ToolTip = T "SuOpen"
+                $open.Margin = New-Object Windows.Thickness(0, 0, 10, 0); $open.Tag = $it.Path; $open.IsEnabled = [bool]$it.Exists
+                $open.Add_Click({ param($s) Start-Process explorer.exe "/select,`"$($s.Tag)`"" })
+
+                $sw = New-Object Windows.Controls.CheckBox
+                $sw.Style = $switchStyle; $sw.IsChecked = [bool]$it.Enabled; $sw.Tag = $it
+                $sw.Add_Click({
+                    param($s)
+                    $item = $s.Tag; $want = [bool]$s.IsChecked
+                    try {
+                        Set-WoStartupItem $item $want
+                        $item.Enabled = $want
+                        Set-Status ((T $(if ($want) { "SuToggledOn" } else { "SuToggledOff" })) -f $item.Name) "ok"
+                    } catch {
+                        $s.IsChecked = -not $want
+                        Set-Status ((T "SuFail") -f $item.Name, $_.Exception.Message) "err"
+                    }
+                    Update-StartupSummary
+                })
+
+                [Windows.Controls.Grid]::SetColumn($txt, 1); [Windows.Controls.Grid]::SetColumn($open, 2); [Windows.Controls.Grid]::SetColumn($sw, 3)
+                [void]$g.Children.Add($iconBox); [void]$g.Children.Add($txt); [void]$g.Children.Add($open); [void]$g.Children.Add($sw)
+                $row.Child = $g
+                [void]$stack.Children.Add($row)
+            }
+            [void]$list.Children.Add($card)
+        }
+        Update-StartupSummary
+    }
+    (N "BtnSuRefresh").Add_Click({ Load-Startup })
+    (N "BtnSuTaskMgr").Add_Click({ Start-Process taskmgr.exe -ArgumentList "/7 /startup" })
+
+    # ================= DİSK =================
+    $script:DiskScan = @{}
+    $script:DiskScanned = $false
+    $script:DiskBusy = $false
+    $script:CleanSel = @{}
+    foreach ($c in $DiskCategories) { $script:CleanSel[$c.Id] = [bool]$c.Rec }
+
+    function Show-Drives {
+        $grid = N "DriveList"; $grid.Children.Clear()
+        $drives = @(Get-WoDrives)
+        $grid.Columns = [Math]::Max(1, [Math]::Min(4, $drives.Count))
+        $grid.Margin = New-Object Windows.Thickness(0, 0, -12, 0)
+        $cardStyle = $window.FindResource("Card"); $slim = $window.FindResource("Slim"); $iconFont = $window.FindResource("Icons")
+        foreach ($d in $drives) {
+            $used = 100 * (1 - $d.Free / [Math]::Max([double]1, $d.Total))
+            $card = New-Object Windows.Controls.Border
+            $card.Style = $cardStyle; $card.Padding = New-Object Windows.Thickness(18, 16, 18, 16); $card.Margin = New-Object Windows.Thickness(0, 0, 12, 0)
+            $sp = New-Object Windows.Controls.StackPanel
+            $head = New-Object Windows.Controls.Grid; New-Cols $head @(40, "*")
+            $ib = New-Object Windows.Controls.Border
+            $ib.Width = 32; $ib.Height = 32; $ib.CornerRadius = New-Object Windows.CornerRadius(8); $ib.Background = Brush "#173328"; $ib.HorizontalAlignment = "Left"
+            $ic = New-Tb ([string][char]0xEDA2) 15 "#34D399"; $ic.FontFamily = $iconFont; $ic.HorizontalAlignment = "Center"; $ic.VerticalAlignment = "Center"
+            $ib.Child = $ic
+            $hs = New-Object Windows.Controls.StackPanel; $hs.VerticalAlignment = "Center"
+            $tr = New-Object Windows.Controls.StackPanel; $tr.Orientation = "Horizontal"
+            $label = if ($d.Label) { $d.Label } else { T "DriveLocal" }
+            $nt = New-Tb "$label ($($d.Letter):)" 13 "#EDEDF5"; $nt.TextWrapping = "NoWrap"; $nt.TextTrimming = "CharacterEllipsis"; $nt.FontWeight = [Windows.FontWeights]::SemiBold
+            [void]$tr.Children.Add($nt)
+            $fl = New-Object Windows.Controls.StackPanel; $fl.Orientation = "Horizontal"; $fl.Margin = New-Object Windows.Thickness(0, 2, 0, 0)
+            $ft = New-Tb "$($d.Format)" 10.5 "#6A6A86"; $ft.VerticalAlignment = "Center"
+            [void]$fl.Children.Add($ft)
+            if ($d.System) { [void]$fl.Children.Add((New-Badge (T "DriveSystem") "#231F3F" "#C4B5FD")) }
+            [void]$hs.Children.Add($tr); [void]$hs.Children.Add($fl)
+            [Windows.Controls.Grid]::SetColumn($hs, 1)
+            [void]$head.Children.Add($ib); [void]$head.Children.Add($hs)
+            $pctRow = New-Object Windows.Controls.StackPanel; $pctRow.Orientation = "Horizontal"; $pctRow.Margin = New-Object Windows.Thickness(0, 12, 0, 0)
+            $pv = New-Tb ("{0:N0}" -f $used) 26 "#FFFFFF"; $pv.FontWeight = [Windows.FontWeights]::Bold
+            $pp = New-Tb "%" 14 "#7A7A94"; $pp.VerticalAlignment = "Bottom"; $pp.Margin = New-Object Windows.Thickness(2, 0, 0, 5)
+            [void]$pctRow.Children.Add($pv); [void]$pctRow.Children.Add($pp)
+            $bar = New-Object Windows.Controls.ProgressBar
+            $bar.Style = $slim; $bar.Maximum = 100; $bar.Value = $used; $bar.Height = 8; $bar.Margin = New-Object Windows.Thickness(0, 6, 0, 8)
+            if ($used -ge 90) { $bar.Foreground = Brush "#F87171" } elseif ($used -ge 75) { $bar.Foreground = Brush "#FBBF24" }
+            $fr = New-Tb ((T "DriveFree") -f (Fmt-GB $d.Free), (Fmt-GB $d.Total)) 11.5 "#9C9CB8"
+            [void]$sp.Children.Add($head); [void]$sp.Children.Add($pctRow); [void]$sp.Children.Add($bar); [void]$sp.Children.Add($fr)
+            $card.Child = $sp
+            [void]$grid.Children.Add($card)
+        }
+    }
+
+    function Build-CleanList {
+        $list = N "CleanList"; $list.Children.Clear()
+        $check = $window.FindResource("Check")
+        foreach ($c in $DiskCategories) {
+            $row = New-Object Windows.Controls.Border
+            $row.BorderBrush = Brush "#1E1E32"; $row.BorderThickness = New-Object Windows.Thickness(0, 1, 0, 0)
+            $row.Padding = New-Object Windows.Thickness(20, 12, 20, 12)
+            $g = New-Object Windows.Controls.Grid; New-Cols $g @("*", 110)
+            $cb = New-Object Windows.Controls.CheckBox
+            $cb.Style = $check; $cb.Margin = New-Object Windows.Thickness(0); $cb.Tag = $c.Id
+            $cb.Focusable = $false
+            $cb.IsChecked = $script:CleanSel[$c.Id]
+            $txt = New-Object Windows.Controls.StackPanel
+            $nm = New-Tb $c[$script:Lang][0] 13 "#EDEDF5"
+            $ds = New-Tb $c[$script:Lang][1] 11.5 "#7A7A94"; $ds.Margin = New-Object Windows.Thickness(0, 2, 12, 0)
+            [void]$txt.Children.Add($nm); [void]$txt.Children.Add($ds)
+            $cb.Content = $txt
+            $cb.Add_Click({ param($s) $script:CleanSel[$s.Tag] = [bool]$s.IsChecked; Update-CleanSummary })
+            $r = $script:DiskScan[$c.Id]
+            $sizeTxt = if ($script:DiskBusy -and -not $r) { "…" } elseif ($r) { Fmt-Size $r.Bytes } else { "—" }
+            $color = if ($r -and $r.Bytes -ge 1GB) { "#FBBF24" } elseif ($r -and $r.Bytes -eq 0) { "#34D399" } else { "#EDEDF5" }
+            $sz = New-Tb $sizeTxt 13.5 $color; $sz.FontWeight = [Windows.FontWeights]::SemiBold
+            $sz.HorizontalAlignment = "Right"; $sz.VerticalAlignment = "Center"; $sz.TextWrapping = "NoWrap"
+            [Windows.Controls.Grid]::SetColumn($sz, 1)
+            [void]$g.Children.Add($cb); [void]$g.Children.Add($sz)
+            $row.Child = $g
+            [void]$list.Children.Add($row)
+        }
+        Update-CleanSummary
+    }
+
+    function Update-CleanSummary {
+        $bytes = 0.0; $files = 0; $cats = 0
+        foreach ($c in $DiskCategories) {
+            $r = $script:DiskScan[$c.Id]
+            if ($script:CleanSel[$c.Id] -and $r -and $r.Bytes -gt 0) { $bytes += $r.Bytes; $files += $r.Files; $cats++ }
+        }
+        (N "DcSelBytes").Text = if ($script:DiskScanned) { Fmt-Size $bytes } else { "—" }
+        (N "DcSelFiles").Text = (T "DcSelFiles") -f $files, $cats
+        (N "BtnDiskClean").IsEnabled = ($bytes -gt 0) -and -not $script:DiskBusy
+        return $bytes
+    }
+
+    function Start-DiskScan {
+        if ($script:DiskBusy) { return }
+        $script:DiskBusy = $true
+        $script:DiskScan = @{}
+        (N "BtnDiskScan").IsEnabled = $false
+        (N "DcSub").Text = T "DcScanning"
+        Build-CleanList
+        Start-Bg -Work {
+            param($Mod)
+            . $Mod
+            Get-WoDiskScan
+        } -ArgList @((Join-Path $AppDir "modules\DiskCleaner.ps1")) -Done {
+            param($out, $err)
+            $script:DiskBusy = $false; $script:DiskScanned = $true
+            (N "BtnDiskScan").IsEnabled = $true
+            (N "DcSub").Text = T "DcSub"
+            if ($err) { Write-WoLog "Disk taramasi: $err" }
+            foreach ($r in @($out)) { if ($r.Id) { $script:DiskScan[$r.Id] = $r } }
+            Build-CleanList
+            if ($script:Page -eq "Disk") { [void]$window.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::ContextIdle, [Action]{ (N "PageDisk").ScrollToTop() }) }
+        }
+    }
+
+    function Start-DiskClean {
+        if ($script:DiskBusy) { return }
+        $ids = @($DiskCategories | Where-Object { $script:CleanSel[$_.Id] -and $script:DiskScan[$_.Id] -and $script:DiskScan[$_.Id].Bytes -gt 0 } | ForEach-Object Id)
+        if ($ids.Count -eq 0) { return }
+        $bytes = Update-CleanSummary
+        $msg = (T "DcConfirm") -f (Fmt-Size $bytes)
+        if ($ids -contains "Recycle") { $msg += T "DcRecycleConfirm" }
+        $res = [Windows.MessageBox]::Show($window, $msg, "Windows Optimizer", "YesNo", "Warning")
+        if ("$res" -ne "Yes") { return }
+
+        $script:DiskBusy = $true
+        (N "BtnDiskClean").IsEnabled = $false; (N "BtnDiskScan").IsEnabled = $false
+        (N "BtnDiskClean").Content = T "DcCleaning"
+        Set-Status (T "DcCleaning") "busy"
+        Start-Bg -Work {
+            param($Mod, $Ids)
+            . $Mod
+            Invoke-WoDiskClean $Ids
+        } -ArgList @((Join-Path $AppDir "modules\DiskCleaner.ps1"), [string[]]$ids) -Done {
+            param($out, $err)
+            $script:DiskBusy = $false
+            (N "BtnDiskClean").Content = T "BtnDiskClean"
+            $freed = 0.0; $del = 0; $fail = 0
+            foreach ($r in @($out)) { if ($r.Id) { $freed += $r.Freed; $del += $r.Deleted; $fail += $r.Failed } }
+            if ($err) { Write-WoLog "Disk temizligi: $err" }
+            (N "DcResultBox").Visibility = "Visible"
+            (N "DcResult").Text = (T "DcResult") -f (Fmt-Size $freed)
+            (N "DcResultSub").Text = (T "DcResultSub") -f $del, $fail
+            Set-Status ((T "DcDone") -f (Fmt-Size $freed)) "ok"
+            Show-Drives
+            Start-DiskScan
+        }
+    }
+    (N "BtnDiskScan").Add_Click({ Start-DiskScan })
+    (N "BtnDiskClean").Add_Click({ Start-DiskClean })
+    (N "BtnCleanMgr").Add_Click({ Start-Process cleanmgr.exe })
+
     # ================= DİL =================
     $LocNames = @(
         "NavCaption", "UpdTitle", "HeroCaption", "HeroLabel", "BtnQuickOptimize", "BtnGoTweaks",
@@ -1786,7 +2195,8 @@ try {
         "OptStandby", "OptStandbyD", "OptLowStandby", "OptLowStandbyD", "OptFileCache", "OptFileCacheD", "BtnClean", "AutoTitle",
         "ResTitle", "ResNone", "ResGainSub", "ResColBefore", "ResColAfter", "ResRowInUse", "ResRowStandby", "ResRowModified", "ResRowAvail",
         "ProcTitle", "MemNote", "SetLangT", "SetLangD", "SetUpdT", "BtnCheckUpdate", "SetShortcutT", "SetShortcutD", "BtnFixShortcut",
-        "SetRestoreT", "SetRestoreD", "BtnRestore2", "SetLogT", "SetLogD", "BtnOpenLog", "SetAboutT", "AdminBadge"
+        "SetRestoreT", "SetRestoreD", "BtnRestore2", "SetLogT", "SetLogD", "BtnOpenLog", "SetAboutT", "AdminBadge",
+        "SuHint", "BtnSuTaskMgr", "BtnSuRefresh", "DcTitle", "DcSub", "BtnDiskScan", "DcSelTitle", "BtnDiskClean", "DcNote", "BtnCleanMgr"
     )
     function Apply-Language {
         foreach ($n in $LocNames) {
@@ -1794,7 +2204,7 @@ try {
             if (-not $ctrl) { continue }
             if ($ctrl -is [Windows.Controls.TextBlock]) { $ctrl.Text = T $n } else { $ctrl.Content = T $n }
         }
-        foreach ($p in @("Home", "Tweaks", "Memory", "Settings")) { (N "Nav$p").Content = T "Nav$p" }
+        foreach ($p in $PageOrder) { (N "Nav$p").Content = T "Nav$p" }
         (N "Auto0").Content = T "AutoOff"
         (N "BtnLang").Content = if ($script:Lang -eq "TR") { "EN" } else { "TR" }
         (N "SideVersion").Text = "v$LocalVersion"
@@ -1807,6 +2217,9 @@ try {
         if ($script:Remote) { Show-UpdateCard }
         (N "CpuSub").Text = (T "CpuSub") -f [Environment]::ProcessorCount, [Diagnostics.Process]::GetProcesses().Length
         if ($script:TweakRows.Count -gt 0) { Build-TweakList }
+        if ($script:StartupLoaded) { Build-StartupList } else { (N "SuSummary").Text = T "SuLoading" }
+        if ($script:Page -eq "Disk") { Show-Drives }
+        Build-CleanList
         (N "Lang$($script:Lang)").IsChecked = $true
     }
     function Set-Language([string]$L) {
@@ -1861,8 +2274,10 @@ try {
                 4  { & $snap "1-Home"; Show-Page "Tweaks" }
                 5  { & $snap "2-Tweaks"; Show-Page "Memory" }
                 8  { & $snap "3-Memory"; Start-RamClean }
-                12 { & $snap "4-Memory-after"; Show-Page "Settings" }
-                13 { & $snap "5-Settings"; $window.Close() }
+                12 { & $snap "4-Memory-after"; Show-Page "Startup" }
+                16 { & $snap "5-Startup"; Show-Page "Disk" }
+                24 { & $snap "6-Disk"; Show-Page "Settings" }
+                25 { & $snap "7-Settings"; $window.Close() }
             }
         })
         $snapTimer.Start()

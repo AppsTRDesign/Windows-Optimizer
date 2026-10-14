@@ -1,7 +1,7 @@
 {
-  "version": "2.0.1",
+  "version": "2.1.0",
   "url": "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1",
-  "notes": "Pencere öğeleri (Widgets) ayarı düzeltildi, RAM sonucu gösterim hatası giderildi, hatalı ayarlar artık adıyla bildiriliyor.",
+  "notes": "Yeni: Başlangıç yöneticisi, Disk temizleme, Gizlilik izinleri (konum/mikrofon/kamera), Oyun performansı kategorisi, 43 optimizasyon.",
   "files": [
     "WindowsOptimizer.ps1",
     "config.json",
@@ -10,6 +10,8 @@
     "assets/banner.png",
     "modules/Tweaks.ps1",
     "modules/RamCleaner.ps1",
-    "modules/Updater.ps1"
+    "modules/Updater.ps1",
+    "modules/Startup.ps1",
+    "modules/DiskCleaner.ps1"
   ]
 }
