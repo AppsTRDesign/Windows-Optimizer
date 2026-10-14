@@ -8,7 +8,7 @@ Add-WoStrings @{
     BtnApRefresh = "Yenile"; BtnApSelRec = "Önerilenleri seç"; BtnApRemove = "Seçilenleri kaldır ({0})"
     ApFRec = "Gereksiz ({0})"; ApFAll = "Tümü ({0})"; ApFRemoved = "Kaldırılanlar ({0})"
     ApProvision = "Yeni kullanıcı hesapları için de kaldır"; ApBadgeRec = "GEREKSİZ"; ApBadgeCaution = "DİKKAT"
-    ApStore = "Mağazada aç"; ApRemovedOn = "{0} tarihinde kaldırıldı"
+    ApStore = "Mağazada aç"; ApRemovedOn = "{0} tarihinde kaldırıldı"; ApReinstalled = "YENİDEN YÜKLENDİ"
     ApConfirmTitle = "Uygulamalar kaldırılsın mı?"; ApConfirmMsg = "{0} uygulama bu kullanıcı için kaldırılacak:"
     ApConfirmProv = "Yeni kullanıcı hesaplarına da yüklenmeyecek."; ApConfirmFoot = "Gerekirse Microsoft Store'dan yeniden yükleyebilirsiniz."
     ApConfirmOk = "Kaldır"; ApRemoving = "Uygulamalar kaldırılıyor… ({0})"; ApDone = "{0} uygulama kaldırıldı"; ApWarn = "{0} kaldırıldı, {1} başarısız (ayrıntılar günlükte)"
@@ -20,7 +20,7 @@ Add-WoStrings @{
     BtnApRefresh = "Refresh"; BtnApSelRec = "Select recommended"; BtnApRemove = "Remove selected ({0})"
     ApFRec = "Unnecessary ({0})"; ApFAll = "All ({0})"; ApFRemoved = "Removed ({0})"
     ApProvision = "Also remove for new user accounts"; ApBadgeRec = "UNNECESSARY"; ApBadgeCaution = "CAUTION"
-    ApStore = "Open in Store"; ApRemovedOn = "Removed on {0}"
+    ApStore = "Open in Store"; ApRemovedOn = "Removed on {0}"; ApReinstalled = "REINSTALLED"
     ApConfirmTitle = "Remove apps?"; ApConfirmMsg = "{0} apps will be removed for this user:"
     ApConfirmProv = "They won't be installed for new user accounts either."; ApConfirmFoot = "You can reinstall them from the Microsoft Store if needed."
     ApConfirmOk = "Remove"; ApRemoving = "Removing apps… ({0})"; ApDone = "{0} apps removed"; ApWarn = "{0} removed, {1} failed (see log)"
@@ -93,8 +93,29 @@ $script:AppsLoaded = $false; $script:AppsBusy = $false; $script:Apps = @(); $scr
 $WoAppsLogPath = Join-Path $AppDir "apps-removed.json"
 
 function Get-WoRemovedApps {
-    if (Test-Path $WoAppsLogPath) { try { return @(Get-Content $WoAppsLogPath -Raw -Encoding UTF8 | ConvertFrom-Json) } catch {} }
-    return @()
+    if (-not (Test-Path $WoAppsLogPath)) { return @() }
+    try {
+        # PS 5.1'de ConvertFrom-Json diziyi tek nesne dondurur; once degiskene alip duzlestir.
+        # Eski surumlerin yazdigi { "value": [...], "Count": n } sarmalayicilari da acilir.
+        $j = Get-Content $WoAppsLogPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $flat = New-Object System.Collections.ArrayList
+        $stack = New-Object System.Collections.Stack; $stack.Push($j)
+        while ($stack.Count) {
+            $x = $stack.Pop()
+            if ($null -eq $x) { continue }
+            if ($x -is [array]) { foreach ($y in $x) { $stack.Push($y) }; continue }
+            if ($x.PSObject.Properties["value"] -and $x.PSObject.Properties["Count"]) { $stack.Push($x.value); continue }
+            if ($x.Name) { [void]$flat.Add($x) }
+        }
+        # Ayni uygulama birden cok kez kaldirildiysa en yenisi kalir
+        $dedup = @($flat | Group-Object Name | ForEach-Object { $_.Group | Sort-Object Date -Descending | Select-Object -First 1 })
+        if ($dedup.Count -ne @($j).Count -or ($j | Where-Object { $_.PSObject.Properties["value"] })) { Save-WoRemovedApps $dedup }   # bozuk/eski bicimi onar
+        return $dedup
+    } catch { Write-WoLog "apps-removed.json okunamadi: $_"; return @() }
+}
+
+function Save-WoRemovedApps($Items) {
+    ConvertTo-Json -InputObject @($Items) -Depth 3 | Set-Content $WoAppsLogPath -Encoding UTF8
 }
 
 function Load-Apps {
@@ -168,12 +189,16 @@ function Build-AppList {
     if ($script:AppFilter -eq "removed") {
         if ($removed.Count -eq 0) { $e = New-Tb (T "ApNoRemoved") 13 "#7A7A94"; $e.Margin = New-Object Windows.Thickness(6, 20, 0, 0); [void]$list.Children.Add($e); return }
         $first = $true
-        foreach ($r in ($removed | Sort-Object Date -Descending)) {
+        $installed = @{}; foreach ($a in $script:Apps) { $installed[$a.Family] = $true }
+        foreach ($r in ($removed | Sort-Object @{ e = { $_.Date }; Descending = $true }, Title)) {
             $row = New-Object Windows.Controls.Border; $row.Padding = New-Object Windows.Thickness(18, 12, 18, 12)
             if (-not $first) { $row.BorderBrush = Brush "#1E1E32"; $row.BorderThickness = New-Object Windows.Thickness(0, 1, 0, 0) }; $first = $false
             $g = New-Object Windows.Controls.Grid; New-Cols $g @("*", "Auto")
             $tx = New-Object Windows.Controls.StackPanel
-            [void]$tx.Children.Add((New-Tb $r.Title 13.5 "#EDEDF5"))
+            $tr = New-Object Windows.Controls.WrapPanel
+            [void]$tr.Children.Add((New-Tb $r.Title 13.5 "#EDEDF5"))
+            if ($installed[$r.Family]) { [void]$tr.Children.Add((New-Badge (T "ApReinstalled") "#12302A" "#6EE7B7")) }
+            [void]$tx.Children.Add($tr)
             $m = New-Tb (((T "ApRemovedOn") -f $r.Date) + "  ·  " + $r.Name) 11 "#6A6A86"; $m.Margin = New-Object Windows.Thickness(0, 3, 0, 0); [void]$tx.Children.Add($m)
             $b = New-Object Windows.Controls.Button; $b.Style = $sec; $b.Content = T "ApStore"; $b.Tag = $r.Family; $b.Height = 32
             $b.Add_Click({ param($s) Start-Process "ms-windows-store://pdp/?PFN=$($s.Tag)" })
@@ -246,7 +271,7 @@ function Remove-SelectedApps {
         foreach ($f in @($res | Where-Object { -not $_.Ok })) { Write-WoLog "Uygulama kaldirma ($($f.Job.Name)): $($f.Err)" }
         if ($ok.Count) {
             $log = @(Get-WoRemovedApps) + @($ok | ForEach-Object { [pscustomobject]@{ Name = $_.Job.Name; Family = $_.Job.Family; Title = $_.Job.Title; Date = (Get-Date -Format "yyyy-MM-dd HH:mm") } })
-            ConvertTo-Json @($log) -Depth 3 | Set-Content $WoAppsLogPath -Encoding UTF8
+            Save-WoRemovedApps (@($log | Group-Object Name | ForEach-Object { $_.Group | Sort-Object Date -Descending | Select-Object -First 1 }))
         }
         if ($ok.Count -eq $res.Count) { Set-Status ((T "ApDone") -f $ok.Count) "ok" } else { Set-Status ((T "ApWarn") -f $ok.Count, ($res.Count - $ok.Count)) "warn" }
         Load-Apps

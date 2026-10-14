@@ -1503,6 +1503,7 @@ try {
     }
     $script:Page = "Home"
     function Show-Page([string]$Name) {
+        if ($Snapshot) { Write-WoLog ("SHOWPAGE $Name <- " + ((Get-PSCallStack | Select-Object -Skip 1 -First 4 | ForEach-Object { "$($_.Command):$($_.ScriptLineNumber)" }) -join " < ")) }
         $script:Page = $Name
         foreach ($k in $Pages.Keys) { (N $Pages[$k]).Visibility = if ($k -eq $Name) { "Visible" } else { "Collapsed" } }
         (N "PageTitle").Text = T "Title_$Name"

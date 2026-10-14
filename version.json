@@ -1,7 +1,7 @@
 {
-  "version": "3.0.1",
+  "version": "3.0.2",
   "url": "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1",
-  "notes": "Önemli düzeltme: Tarayıcı şifre/oturum servisleri (Chrome, Brave, Edge Elevation) ve oyun hile korumaları artık kapatılamaz; kapalıysa uygulama sorunu gösterip düzeltmeyi önerir.",
+  "notes": "Düzeltmeler: Kaldırılan uygulamalar listesi (eksik/boş kayıtlar onarıldı, yeniden yüklenenler işaretlenir), Disk Analizi başlığında yazı taşması, tarayıcı servisleri koruması.",
   "files": [
     "WindowsOptimizer.ps1",
     "config.json",
