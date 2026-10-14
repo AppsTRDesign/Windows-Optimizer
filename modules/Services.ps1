@@ -60,6 +60,21 @@ $WoServiceKnowledge = @{
     "edgeupdatem"      = @("Manual", "safe", "Edge güncelleyici; Edge açılınca kendisi denetler.", "Edge updater; checks itself when Edge opens.")
     "MicrosoftEdgeElevationService" = @("Manual", "safe", "Edge yükseltme servisi; gerektiğinde başlar.", "Edge elevation service; starts when needed.")
 }
+# ASLA kapatilmamasi gerekenler: kapatilirsa veri erisilemez hale gelir veya uygulama calismaz.
+# Tarayici "Elevation" servisleri: Chrome/Brave/Edge sifre ve cerezleri bu servis uzerinden sifreler (App-Bound Encryption);
+# kapaliyken profiller bos / cikis yapilmis gorunur. Hile korumalari: kapaliyken ilgili oyunlar acilmaz.
+$WoNoDisablePattern = 'ElevationService|Elevation Service|AntiCheat|^vgc$|^BEService$|EasyAntiCheat'
+$WoNoDisableReason = @{
+    browser = @("Tarayıcının kayıtlı şifreleri ve oturumları bu servise bağlı. Kapatılırsa tarayıcı profilleri boş veya çıkış yapılmış görünür.",
+                "The browser's saved passwords and sessions depend on this service. If disabled, browser profiles look empty or signed out.")
+    browserFix = @("Bu servis KAPALI olduğu için tarayıcı kayıtlı şifreleri ve oturumları açamıyor. 'El ile' yapın, sonra tarayıcıyı yeniden başlatın.",
+                   "This service is DISABLED, so the browser can't open saved passwords and sessions. Set it to 'Manual', then restart the browser.")
+    game = @("Oyunun hile koruması. Kapatılırsa ilgili oyunlar açılmaz; oyun gerektiğinde kendisi başlatır.",
+             "The game's anti-cheat. If disabled, related games won't start; the game starts it when needed.")
+    gameFix = @("Bu hile koruması KAPALI olduğu için ilgili oyunlar açılmayabilir. 'El ile' yapın.",
+                "This anti-cheat is DISABLED, so related games may not start. Set it to 'Manual'.")
+}
+
 # Ucuncu parti guncelleyiciler: El ile yeterli (uygulama acilinca guncellemeyi kendisi yapar)
 $WoUpdaterPattern = 'update|updater|gupdate|AdobeARM|MozillaMaintenance|^brave|BraveElevation|Opera.*(Update|Assistant)|Dropbox(Update)?|Zoom.*Update|Wondershare.*Helper|CCleaner'
 
@@ -112,21 +127,34 @@ function Get-WoServices {
         $mode = switch ("$($s.StartMode)") { "Auto" { "Automatic" } "Manual" { "Manual" } "Disabled" { "Disabled" } default { "$($s.StartMode)" } }
         $rank = @{ Automatic = 2; Manual = 1; Disabled = 0 }
         $needs = $rec -and $rank.ContainsKey($mode) -and $rank[$mode] -gt $rank[$rec]
+        $noDisable = ($s.Name -match $WoNoDisablePattern) -or ($s.DisplayName -match $WoNoDisablePattern)
+        if ($noDisable) {
+            $kind = if ($s.Name -match 'Elevation' -or $s.DisplayName -match 'Elevation') { "browser" } else { "game" }
+            if ($mode -eq "Disabled" -and $protected -ne "user") {
+                # Kapali olmasi bir sorun: duzeltmeyi oner (guvenli)
+                $rec = "Manual"; $needs = $true; $risk = "safe"
+                $reasonTR = $WoNoDisableReason["$($kind)Fix"][0]; $reasonEN = $WoNoDisableReason["$($kind)Fix"][1]
+            } elseif (-not $reasonTR) {
+                $reasonTR = $WoNoDisableReason[$kind][0]; $reasonEN = $WoNoDisableReason[$kind][1]
+            }
+        }
         $cat = if ($needs) { "rec" } elseif (-not $isMs) { "third" } else { "ms" }
         $mem = 0
         # Paylasimli svchost sureclerinde bellek servise ait degildir; yalnizca tek servisli surecler
         if ($s.ProcessId -and $svcPerPid[[int]$s.ProcessId] -eq 1) { $mem = $procMem[[int]$s.ProcessId] }
+        $orig = $backup.($s.Name)
         [pscustomobject]@{
-            Name = $s.Name; Display = "$($s.DisplayName)"; Description = "$($s.Description)"
+            Name = $s.Name; Display = "$($s.DisplayName)"; Description = "$($s.Description)"; Delayed = [bool]$s.DelayedAutoStart
             State = "$($s.State)"; StartMode = $mode; Path = $exe; Company = $company; IsMicrosoft = $isMs
             Category = $cat; RecStart = $rec; NeedsChange = $needs; Risk = $risk
-            ReasonTR = $reasonTR; ReasonEN = $reasonEN; Mem = $mem; Protected = $protected
-            Original = $backup.($s.Name)
+            ReasonTR = $reasonTR; ReasonEN = $reasonEN; Mem = $mem; Protected = $protected; NoDisable = $noDisable
+            Original = $(if ($orig -eq "AutomaticDelayed") { "Automatic" } else { $orig })
         }
     }
 }
 
 function Set-WoServiceStart([string]$Name, [string]$Mode, [string]$CurrentMode) {
+    if ($Mode -eq "Disabled" -and $Name -match $WoNoDisablePattern) { throw "Bu servis kapatilamaz (tarayici sifreleri / oyun hile korumasi icin gerekli)" }
     # Ilk degisiklikte orijinal tipi sakla
     $backup = Get-WoServiceBackup
     if (-not $backup.($Name) -and $CurrentMode) {
@@ -146,8 +174,17 @@ function Restore-WoService([string]$Name) {
     $backup = Get-WoServiceBackup
     $orig = $backup.($Name)
     if (-not $orig) { return }
-    Set-Service -Name $Name -StartupType $orig -ErrorAction Stop
-    if ($orig -eq "Automatic") { Start-Service -Name $Name -ErrorAction SilentlyContinue }
+    if ($orig -eq "AutomaticDelayed") {
+        $out = & sc.exe config "$Name" start= delayed-auto 2>&1
+        if ($LASTEXITCODE) { throw "sc: $out" }
+    } else {
+        try { Set-Service -Name $Name -StartupType $orig -ErrorAction Stop }
+        catch {
+            $out = & sc.exe config "$Name" start= $(@{ Automatic = "auto"; Manual = "demand"; Disabled = "disabled" }[$orig]) 2>&1
+            if ($LASTEXITCODE) { throw "$($_.Exception.Message) / sc: $out" }
+        }
+    }
+    if ($orig -like "Automatic*") { Start-Service -Name $Name -ErrorAction SilentlyContinue }
     $backup.PSObject.Properties.Remove($Name)
     $backup | ConvertTo-Json | Set-Content $WoSvcBackupPath -Encoding UTF8
 }

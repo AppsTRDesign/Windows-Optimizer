@@ -6,19 +6,26 @@
 
 Windows 10/11 için modüler, açık kaynaklı bir performans ve gizlilik aracı. Reklamları ve telemetriyi kapatır, arka plan etkinliğini azaltır ve RAM'i temizler. Canlı bellek grafiği sayesinde her optimizasyonun etkisini **gözünüzle görebilirsiniz**.
 
-> **Sürüm 2.2**: Servis analizi, başlangıç yöneticisi, disk temizleyici, gizlilik izinleri ve oyun performansı kategorileriyle 43 optimizasyon, canlı RAM izleme, ilerleme çubuklu güvenli güncelleme.
+> **Sürüm 3.0**: Oyun Modu, uygulama kaldırıcı, ağ araçları, sistem sağlığı, disk analizi, gizlilik raporu, Windows Update kontrolü, profil, sistem tepsisi ve zamanlanmış bakım. Ayrıca tek tıkla önerilen ayarlar ve ilk duruma sıfırlama, servis analizi, başlangıç yöneticisi, disk temizleyici, gizlilik izinleri ve oyun performansı kategorileriyle 49 optimizasyon, canlı RAM izleme, ilerleme çubuklu güvenli güncelleme.
 
 ## ✨ Özellikler
 
 | Sayfa | Ne yapar |
 |-------|----------|
 | 🏠 **Genel Bakış** | Canlı CPU / RAM / disk kullanımı ve mini grafikler, sistem bilgisi, optimizasyon skoru, hızlı işlemler |
-| ⚡ **Optimizasyonlar** | 6 kategoride 43 ayar. Her ayarın **mevcut durumu sistemden okunur**; kapatırsanız Windows varsayılanına döner |
+| ⚡ **Optimizasyonlar** | 7 kategoride 49 ayar (Windows Update kontrolü dahil). Her ayarın **mevcut durumu sistemden okunur**; kapatırsanız Windows varsayılanına döner |
 | 🧠 **Bellek (RAM)** | Son 2 dakikanın canlı grafiği (kullanımda / değiştirilmiş / standby), tek tıkla temizlik, önce/sonra sonuçları, en çok bellek kullanan uygulamalar, kullanım eşiğine göre otomatik temizlik |
+| 🎮 **Oyun Modu** | Tek tuşla RAM temizliği, geçici Nihai Performans planı, bildirimleri susturma ve seçili arka plan uygulamalarını kapatma; bitince her şey eski haline döner |
 | 🚀 **Başlangıç** | Windows açılırken çalışan tüm programlar (kayıt defteri, başlangıç klasörü, zamanlanmış görevler); simge, yayıncı ve komut satırıyla listelenir, tek tıkla açılıp kapatılır. Görev Yöneticisi ile uyumludur |
 | 🔧 **Servisler** | 300 Windows servisini tarar; Windows bileşeni, üçüncü parti ve gereksiz olanları ayırır. Her öneriyi açıklar, güvenli olanları tek tıkla uygular, tüm değişiklikler geri alınabilir |
 | 🧹 **Disk Temizleme** | Tüm disklerin kapasite kartları; geçici dosyalar, Windows Update önbelleği, tarayıcı önbellekleri, hata dökümleri, shader önbelleği, Geri Dönüşüm Kutusu taranır, boyutları gösterilir, seçilenler temizlenir |
-| ⚙️ **Ayarlar** | Dil (TR/EN), güncelleme denetimi, kısayol onarma, sistem geri yükleme noktası, günlük dosyası |
+| 🗺️ **Disk Analizi** | Klasörleri boyutlarına göre gösteren ağaç haritası (tıklayıp içine inilir) ve en büyük 50 dosya |
+| 📦 **Uygulamalar** | Önceden yüklü gereksiz uygulamaları (Haberler, Clipchamp, Solitaire, Teams vb.) seçerek kaldırma; kritik paketler hiç listelenmez, kaldırılanlar Mağaza'dan geri yüklenebilir |
+| 🌐 **Ağ** | Bağdaştırıcı bilgileri, gerçek sorgu süresiyle DNS hız testi ve tek tıkla DNS seçimi (Cloudflare, Google, Quad9, AdGuard…), DNS önbelleği / IP yenileme / ağ sıfırlama |
+| 🩺 **Sağlık** | Disk SMART bilgileri (sıcaklık, SSD ömrü, çalışma saati), son 30 günün kararlılık özeti, canlı ilerlemeli SFC ve DISM onarımı |
+| 🔍 **Gizlilik Raporu** | Kamera, mikrofon, konum ve ekran yakalamaya hangi uygulamanın ne zaman eriştiği; şu an kullanan varsa canlı gösterilir |
+| ↩️ **Sıfırla** | Her ayarın orijinal değeri ilk değişiklikten önce kaydedilir; tek tıkla ilk duruma ya da Windows varsayılanlarına dönülür |
+| ⚙️ **Ayarlar** | Profil dışa/içe aktarma, sistem tepsisi ve Windows ile başlatma, haftalık zamanlanmış bakım, dil (TR/EN), güncelleme denetimi, kısayol onarma, sistem geri yükleme noktası, günlük dosyası |
 
 ### Optimizasyon kategorileri
 
@@ -97,6 +104,11 @@ Windows-Optimizer/
     ├── Startup.ps1          # Başlangıç uygulamaları yöneticisi
     ├── DiskCleaner.ps1      # Disk kapasitesi + gereksiz dosya temizliği
     ├── Services.ps1         # Arka plan servisleri analizi
+    └── Network.ps1          # Ağ bağdaştırıcıları ve DNS
+pages/                       # Bağımsız sayfalar (kendi arayüzü + mantığı)
+    ├── Game.ps1, Analyzer.ps1, Apps.ps1, Network.ps1
+    ├── Health.ps1, Privacy.ps1
+    └── Extras.ps1           # Profil, sistem tepsisi, zamanlanmış bakım
     └── Updater.ps1          # Sürüm denetimi, indirme, kısayollar
 ```
 

@@ -18,7 +18,11 @@ $TweakCategories = [ordered]@{
     system = @{ Icon = [char]0xE770; TR = "Sistem & Telemetri";    EN = "System & Telemetry" }
     perf   = @{ Icon = [char]0xE945; TR = "Performans";            EN = "Performance" }
     game   = @{ Icon = [char]0xE7FC; TR = "Oyun Performansı";      EN = "Gaming Performance" }
+    update = @{ Icon = [char]0xE895; TR = "Windows Update";        EN = "Windows Update" }
 }
+$WUP  = "$POL\Windows\WindowsUpdate"
+$WUUX = "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings"
+$WoPauseNames = @("PauseUpdatesStartTime", "PauseUpdatesExpiryTime", "PauseFeatureUpdatesStartTime", "PauseFeatureUpdatesEndTime", "PauseQualityUpdatesStartTime", "PauseQualityUpdatesEndTime")
 
 $TweakCatalog = @(
     # ---------------- REKLAMLAR & GİZLİLİK ----------------
@@ -291,7 +295,7 @@ $TweakCatalog = @(
     @{ Id="HAGS"; Cat="game"; Rec=$false; Restart="reboot"
        TR=@("Donanım hızlandırmalı GPU zamanlamasını aç","GPU belleğini ekran kartı kendisi yönetir; gecikmeyi azaltabilir. Destekleyen GPU (GTX 1000 / RX 5000 ve üstü) gerekir.")
        EN=@("Enable hardware-accelerated GPU scheduling","The GPU manages its own memory; may reduce latency. Requires a supporting GPU (GTX 1000 / RX 5000 or newer).")
-       Reg=@( @{P="HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"; N="HwSchMode"; V=2; D=1} ) }
+       Reg=@( @{P="HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"; N="HwSchMode"; V=2; D=$null} ) }
 
     @{ Id="FSO"; Cat="game"; Rec=$false
        TR=@("Tam ekran optimizasyonlarını kapat","Oyunları gerçek özel tam ekranda çalıştırır; bazı eski DirectX 9/11 oyunlarda giriş gecikmesini azaltır.")
@@ -308,12 +312,128 @@ $TweakCatalog = @(
               @{P="HKCU:\Control Panel\Mouse"; N="MouseThreshold1"; V="0"; D="6"}
               @{P="HKCU:\Control Panel\Mouse"; N="MouseThreshold2"; V="0"; D="10"} ) }
 
+    # ---------------- WINDOWS UPDATE ----------------
+    @{ Id="WUPause"; Cat="update"; Rec=$false
+       TR=@("Güncellemeleri 5 hafta duraklat","Tüm Windows güncellemeleri 35 gün durdurulur (Windows'un izin verdiği en uzun süre). Kapatınca hemen devam eder.")
+       EN=@("Pause updates for 5 weeks","All Windows updates are paused for 35 days (the longest Windows allows). Turning it off resumes immediately.")
+       Test={
+           $e = Get-WoRegValue $WUUX "PauseUpdatesExpiryTime"
+           $d = [DateTime]::MinValue
+           $e -and [DateTime]::TryParse("$e", [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AdjustToUniversal, [ref]$d) -and $d -gt [DateTime]::UtcNow
+       }
+       Apply={
+           $now = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"); $end = [DateTime]::UtcNow.AddDays(35).ToString("yyyy-MM-ddTHH:mm:ssZ")
+           foreach ($n in $WoPauseNames) { Set-WoRegValue $WUUX $n $(if ($n -match 'Start') { $now } else { $end }) }
+       }
+       Revert={ foreach ($n in $WoPauseNames) { Set-WoRegValue $WUUX $n $null } } }
+
+    @{ Id="WUNoRestart"; Cat="update"; Rec=$true
+       TR=@("Oturum açıkken otomatik yeniden başlatmayı engelle","Güncelleme sonrası Windows, siz oturumdayken bilgisayarı kendiliğinden yeniden başlatmaz.")
+       EN=@("Block automatic restarts while signed in","After updates, Windows won't restart the PC by itself while you are signed in.")
+       Reg=@( @{P="$WUP\AU"; N="NoAutoRebootWithLoggedOnUsers"; V=1; D=$null} ) }
+
+    @{ Id="WUDrivers"; Cat="update"; Rec=$false
+       TR=@("Sürücüleri Windows Update ile güncelleme","Ekran kartı vb. sürücüler Windows Update tarafından değiştirilmez; üreticinin sürücüsü korunur.")
+       EN=@("Don't update drivers via Windows Update","GPU and other drivers are not replaced by Windows Update; the vendor driver is kept.")
+       Reg=@( @{P=$WUP; N="ExcludeWUDriversInQualityUpdate"; V=1; D=$null} ) }
+
+    @{ Id="WUNotify"; Cat="update"; Rec=$false
+       TR=@("İndirmeden önce sor","Güncellemeler otomatik indirilmez; Windows önce bildirir, ne zaman kurulacağına siz karar verirsiniz.")
+       EN=@("Ask before downloading","Updates are not downloaded automatically; Windows notifies you first and you decide when to install.")
+       Reg=@( @{P="$WUP\AU"; N="AUOptions"; V=2; D=$null}
+              @{P="$WUP\AU"; N="NoAutoUpdate"; V=0; D=$null} ) }
+
+    @{ Id="WUDeferFeature"; Cat="update"; Rec=$false
+       TR=@("Büyük sürüm güncellemelerini 1 yıl ertele","24H2 gibi yıllık özellik güncellemeleri 365 gün ertelenir; güvenlik güncellemeleri gelmeye devam eder (Pro/Enterprise).")
+       EN=@("Defer feature updates for 1 year","Yearly feature updates like 24H2 are deferred 365 days; security updates still arrive (Pro/Enterprise).")
+       Reg=@( @{P=$WUP; N="DeferFeatureUpdates"; V=1; D=$null}
+              @{P=$WUP; N="DeferFeatureUpdatesPeriodInDays"; V=365; D=$null} ) }
+
+    @{ Id="StoreAuto"; Cat="update"; Rec=$false
+       TR=@("Mağaza uygulamalarının otomatik güncellenmesini kapat","Microsoft Store uygulamaları arka planda kendiliğinden güncellenmez.")
+       EN=@("Disable automatic Store app updates","Microsoft Store apps don't update themselves in the background.")
+       Reg=@( @{P="$POL\WindowsStore"; N="AutoDownload"; V=2; D=$null} ) }
+
     @{ Id="GameDVR"; Cat="game"; Rec=$true
        TR=@("Xbox Game DVR arka plan kaydını kapat","Oyunlarda arka plan video yakalamayı kapatır, FPS'i artırabilir.")
        EN=@("Disable Xbox Game DVR background recording","Turns off background capture in games; may increase FPS.")
        Reg=@( @{P="HKCU:\System\GameConfigStore"; N="GameDVR_Enabled"; V=0; D=1}
               @{P="$POL\Windows\GameDVR"; N="AllowGameDVR"; V=0; D=$null} ) }
 )
+
+# ---------------- DEGISIKLIK GUNLUGU ----------------
+# Bir deger ilk kez degistirilmeden once orijinali kaydedilir; "Sifirla" bunlari birebir geri yazar.
+$WoJournalPath = Join-Path (Split-Path $PSScriptRoot -Parent) "journal.json"
+$script:WoNoJournal = $false
+
+function Get-WoJournal {
+    if (Test-Path $WoJournalPath) { try { return (Get-Content $WoJournalPath -Raw -Encoding UTF8 | ConvertFrom-Json) } catch {} }
+    return [pscustomobject]@{}
+}
+function Save-WoJournal($J) { $J | ConvertTo-Json -Depth 5 | Set-Content $WoJournalPath -Encoding UTF8 }
+
+function Add-WoJournalReg([string]$Path, [string]$Name) {
+    if ($script:WoNoJournal -or $Path -like "HKCU:\SOFTWARE\WindowsOptimizer*") { return }
+    $key = "reg|$Path|$Name"
+    $j = Get-WoJournal
+    if ($j.PSObject.Properties[$key]) { return }
+    $e = [ordered]@{ Exists = $false; Kind = $null; Value = $null }
+    try {
+        $item = Get-Item -LiteralPath $Path -ErrorAction Stop
+        if ($item.GetValueNames() -contains $Name) {
+            $e.Exists = $true; $e.Kind = "$($item.GetValueKind($Name))"; $e.Value = $item.GetValue($Name, $null, "DoNotExpandEnvironmentNames")
+        }
+    } catch {}
+    $j | Add-Member -NotePropertyName $key -NotePropertyValue ([pscustomobject]$e)
+    Save-WoJournal $j
+}
+
+function Add-WoJournalCustom($Tweak) {
+    if ($script:WoNoJournal) { return }
+    $key = "custom|$($Tweak.Id)"
+    $j = Get-WoJournal
+    if ($j.PSObject.Properties[$key]) { return }
+    $j | Add-Member -NotePropertyName $key -NotePropertyValue ([bool](Test-WoTweak $Tweak))
+    Save-WoJournal $j
+}
+
+function Get-WoJournalCount { @((Get-WoJournal).PSObject.Properties).Count }
+
+function Restore-WoJournal {
+    $j = Get-WoJournal
+    $left = [pscustomobject]@{}
+    $script:WoNoJournal = $true
+    try {
+        # Once ozel ayarlar (guc plani, hazirda bekletme), sonra registry
+        $props = @($j.PSObject.Properties | Sort-Object { if ($_.Name -like "custom|*") { 0 } else { 1 } })
+        foreach ($p in $props) {
+            $parts = $p.Name -split '\|', 3
+            try {
+                if ($parts[0] -eq "custom") {
+                    $t = Get-WoTweak $parts[1]
+                    if ($t -and [bool]$p.Value -ne [bool](Test-WoTweak $t)) { Invoke-WoTweak $t -Revert:(-not [bool]$p.Value) }
+                } else {
+                    $e = $p.Value
+                    if (-not $e.Exists) { Set-WoRegValue $parts[1] $parts[2] $null }
+                    else {
+                        $v = switch ($e.Kind) {
+                            "DWord"        { [BitConverter]::ToUInt32([BitConverter]::GetBytes([int64]$e.Value), 0) }
+                            "String"       { [string]$e.Value }
+                            "ExpandString" { [string]$e.Value }
+                            default        { throw "Desteklenmeyen tur: $($e.Kind)" }
+                        }
+                        Set-WoRegValue $parts[1] $parts[2] $v
+                    }
+                }
+                [pscustomobject]@{ Key = $p.Name; Ok = $true }
+            } catch {
+                $left | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value
+                [pscustomobject]@{ Key = $p.Name; Ok = $false; Err = $_.Exception.Message }
+            }
+        }
+    } finally { $script:WoNoJournal = $false }
+    Save-WoJournal $left
+}
 
 # ---------------- MOTOR ----------------
 function Get-WoRegValue([string]$Path, [string]$Name) {
@@ -441,6 +561,7 @@ function Set-WoRegValueGpo([string]$Path, [string]$Name, $Value) {
 }
 
 function Set-WoRegValue([string]$Path, [string]$Name, $Value) {
+    Add-WoJournalReg $Path $Name
     try {
         if ($null -eq $Value) {
             if ($null -ne (Get-WoRegValue $Path $Name)) { Remove-ItemProperty -LiteralPath $Path -Name $Name -ErrorAction Stop }
@@ -486,6 +607,7 @@ function Test-WoTweak($Tweak) {
 }
 
 function Invoke-WoTweak($Tweak, [switch]$Revert) {
+    if ($Tweak.Apply -or $Tweak.Revert) { Add-WoJournalCustom $Tweak }
     if ($Revert -and $Tweak.Revert) { & $Tweak.Revert }
     if (-not $Revert -and $Tweak.Apply) { & $Tweak.Apply }
     foreach ($r in $Tweak.Reg) {

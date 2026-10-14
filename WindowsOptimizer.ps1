@@ -1,6 +1,8 @@
-﻿# WindowsOptimizer.ps1 - v2.0
+﻿# WindowsOptimizer.ps1 - v3
 # Moduler Windows 10/11 optimizasyon araci (WPF)
-param([string]$Snapshot, [switch]$Updated)
+#   -Tray        : sistem tepsisinde gizli baslar (Windows ile baslatma)
+#   -Maintenance : arayuz acmadan zamanlanmis bakimi calistirir ve cikar
+param([string]$Snapshot, [switch]$Updated, [switch]$Tray, [switch]$Maintenance)
 
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 $ErrorActionPreference = "Continue"
@@ -10,7 +12,8 @@ $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIden
 if (-not $isAdmin -and -not $Snapshot) {
     try {
         Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -ArgumentList @(
-            "-NoProfile", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`""
+            @("-NoProfile", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`"") +
+            @(if ($Tray) { "-Tray" }) + @(if ($Maintenance) { "-Maintenance" })
         )
     } catch {}
     exit
@@ -30,6 +33,7 @@ function Write-WoLog([string]$Msg) {
 . (Join-Path $AppDir "modules\Startup.ps1")
 . (Join-Path $AppDir "modules\DiskCleaner.ps1")
 . (Join-Path $AppDir "modules\Services.ps1")
+. (Join-Path $AppDir "modules\Network.ps1")
 
 # Konsol penceresini gizle (kisayol zaten gizli baslatir; dogrudan calistirma icin)
 if (-not $Snapshot) { try { [void][WoNative]::ShowWindow([WoNative]::GetConsoleWindow(), 0) } catch {} }
@@ -53,16 +57,39 @@ if (Test-Path $SettingsPath) {
         if ($s.language -in @("TR", "EN")) { $Settings.language = $s.language }
         if ($s.autoClean -ne $null) { $Settings.autoClean = [int]$s.autoClean }
         if ($s.ram) { foreach ($k in @($Settings.ram.Keys)) { if ($s.ram.$k -ne $null) { $Settings.ram[$k] = [bool]$s.ram.$k } } }
+        # Sayfa modullerinin serbest bicimli ayarlari (oyun modu, tepsi, bakim vb.) aynen tasinir
+        foreach ($prop in $s.PSObject.Properties) {
+            if ($prop.Name -notin @("language", "autoClean", "ram")) { $Settings[$prop.Name] = $prop.Value }
+        }
     } catch {}
 }
 function Save-WoSettings {
     try { $Settings | ConvertTo-Json -Depth 4 | Set-Content $SettingsPath -Encoding UTF8 } catch { Write-WoLog "Ayar kaydedilemedi: $_" }
 }
 
+# ---------------- ZAMANLANMIS BAKIM (arayuzsuz) ----------------
+if ($Maintenance) {
+    Write-WoLog "Zamanlanmis bakim basladi"
+    $res = [ordered]@{ Date = (Get-Date -Format "yyyy-MM-dd HH:mm"); Freed = 0; Ram = 0; Ok = $true }
+    try {
+        $ids = @($DiskCategories | Where-Object Rec | ForEach-Object Id)
+        foreach ($r in (Invoke-WoDiskClean $ids)) { $res.Freed += [double]$r.Freed }
+        $before = [WoNative]::GetMemInfo()
+        [void][WoNative]::MemCommand(2); [void][WoNative]::MemCommand(3); [void][WoNative]::MemCommand(4)
+        Start-Sleep -Milliseconds 300
+        $res.Ram = [Math]::Max([double]0, [double]([WoNative]::GetMemInfo().Avail) - [double]$before.Avail)
+        Clear-DnsClientCache -ErrorAction SilentlyContinue
+    } catch { $res.Ok = $false; Write-WoLog "Bakim hatasi: $_" }
+    # Ayri dosya: uygulama acikken settings.json ile yaris olmasin
+    [pscustomobject]$res | ConvertTo-Json | Set-Content (Join-Path $AppDir "maint-last.json") -Encoding UTF8
+    Write-WoLog ("Zamanlanmis bakim bitti: disk {0:N0} MB, RAM {1:N0} MB" -f ($res.Freed / 1MB), ($res.Ram / 1MB))
+    exit
+}
+
 # ---------------- DİL ----------------
 $Str = @{
 TR = @{
-    NavCaption = "MENÜ"; NavHome = "Genel Bakış"; NavTweaks = "Optimizasyonlar"; NavMemory = "Bellek (RAM)"; NavSettings = "Ayarlar"
+    NavGrp_main = "GENEL"; NavGrp_perf = "PERFORMANS"; NavGrp_clean = "TEMİZLİK"; NavGrp_system = "SİSTEM"; NavHome = "Genel Bakış"; NavTweaks = "Optimizasyonlar"; NavMemory = "Bellek (RAM)"; NavSettings = "Ayarlar"
     Title_Home = "Genel Bakış"; Sub_Home = "Sisteminizin anlık durumu ve hızlı işlemler"
     Title_Tweaks = "Optimizasyonlar"; Sub_Tweaks = "Her ayarın gerçek durumu okunur — kapatırsanız Windows varsayılanına döner"
     Title_Memory = "Bellek (RAM)"; Sub_Memory = "Canlı bellek izleme ve optimizasyon"
@@ -73,8 +100,8 @@ TR = @{
     UpdChecking = "Güncellemeler denetleniyor…"; UpdLatest = "En güncel sürümü kullanıyorsunuz (v{0})"
     UpdAvailable = "Yeni sürüm mevcut: v{0} — sol menüden güncelleyebilirsiniz"; UpdFail = "Güncelleme sunucusuna ulaşılamadı"
     Updated = "Güncelleme tamamlandı — v{0} kullanıyorsunuz"
-    HeroCaption = "OPTİMİZASYON DURUMU"; HeroLabel = "  optimizasyon etkin"; HeroHint = "Önerilen {0} ayardan {1} tanesi etkin"
-    BtnQuickOptimize = "Önerilenleri Uygula"; BtnGoTweaks = "Tüm ayarları gör"
+    HeroCaption = "OPTİMİZASYON DURUMU"; HeroLabel = "  optimizasyon uygulandı"; HeroHint = "Önerilen {0} ayardan {1} tanesi uygulandı"
+    BtnQuickOptimize = "Önerilenleri Uygula"; BtnGoTweaks = "Ayrıntılar"
     CpuTitle = "İşlemci"; RamTitle = "Bellek"; DiskTitle = "Sistem Diski"
     CpuSub = "{0} mantıksal çekirdek · {1} işlem"; RamSub = "{0} / {1} kullanımda"; DiskSub = "{0} boş · toplam {1}"
     SysTitle = "Sistem Bilgisi"; LblOs = "İşletim sistemi"; LblBuild = "Derleme"; LblCpu = "İşlemci"; LblRam = "Fiziksel bellek"; LblUptime = "Çalışma süresi"; LblProc = "Çalışan işlem"
@@ -157,7 +184,7 @@ TR = @{
     SvCautionTitle = "Dikkat gerektiren servis"; SvContinue = "Devam et"
     SvRecTitle = "Güvenli öneriler uygulansın mı?"; SvRecMsg = "{0} servisin başlangıç tipi önerilen değere ayarlanacak. 'Dikkat' etiketli servisler dahil değildir. Tüm değişiklikler geri alınabilir."
     SvRecDone = "{0} servis güncellendi"; SvApply = "Uygula"
-    SvBadgeLocked = "KORUMALI"
+    SvBadgeLocked = "KORUMALI"; SvBadgeNoDisable = "KAPATMAYIN"; SvNoDisableTip = "Bu servis kapatılamaz: kapatılırsa tarayıcı şifreleri/oturumları veya oyunlar çalışmaz"
     SvProt_vendor = "Güvenlik yazılımı kendini koruyor; bu servisi yalnızca kendi uygulamasının ayarlarından yönetebilirsiniz."
     SvProt_acl = "Üreticisi bu servisin ayarlarının değiştirilmesine izin vermiyor (yönetici dahil)."
     SvProt_user = "Kullanıcı başına çalışan servis kopyası; Windows tarafından ana şablonu üzerinden otomatik yönetilir."
@@ -173,10 +200,22 @@ TR = @{
     SuJunkBadge = "KAPATILABİLİR"; BtnSuDisableJunk = "Gereksizleri kapat"
     SuJunkTitle = "Gereksiz başlangıç öğeleri kapatılsın mı?"; SuJunkMsg = "{0} öğe Windows açılırken başlamayacak:`n`n{1}`n`nUygulamalar silinmez; ihtiyaç duyduğunuzda normal şekilde açabilirsiniz."
     SuJunkDone = "{0} başlangıç öğesi kapatıldı"; SuJunkNone = "Kapatılacak gereksiz öğe yok"
+    BtnResetAll = "Sıfırla"; BtnReset2 = "Sıfırla…"; SetResetT = "Tüm ayarları sıfırla"
+    SetResetD = "Windows Optimizer'ın yaptığı tüm değişiklikleri geri alır: optimizasyonlar, servisler ve başlangıç öğeleri."
+    RecAllTitle = "Önerilen ayarlar uygulansın mı?"; RecAllMsg = "Şunlar yapılacak:"; RecAllOk = "Uygula"; RecAllPlanning = "Öneriler hazırlanıyor…"
+    RecAllTw = "•  {0} optimizasyon uygulanacak"; RecAllSu = "•  {0} gereksiz başlangıç öğesi kapatılacak ({1})"; RecAllSv = "•  {0} servis güvenli değerine ayarlanacak"
+    RecAllFoot = "Hepsi 'Sıfırla' ile geri alınabilir."; RecAllNone = "Bilgisayarınız zaten önerilen ayarlarda; yapılacak bir şey yok."
+    RecAllNoneTitle = "Her şey yolunda"; RecAllDone = "Önerilen ayarlar uygulandı: {0} değişiklik"; RecAllWarn = "{0} değişiklik uygulandı, {1} başarısız (ayrıntılar günlükte)"
+    ResetTitle = "Tüm ayarlar sıfırlansın mı?"
+    ResetMsg = "Windows Optimizer'ın yaptığı değişiklikler geri alınacak:`n`n•  {0} kayıtlı ayar ilk (orijinal) değerine dönecek`n•  {1} servis eski başlangıç tipine dönecek`n•  {2} başlangıç öğesi eski durumuna dönecek`n`n'Windows varsayılanları' ise uygulanmış tüm optimizasyonları Windows'un varsayılan değerlerine çevirir (değişiklik günlüğü tutulmadan önce yapılanlar dahil)."
+    ResetOk = "İlk duruma döndür"; ResetAlt = "Windows varsayılanları"; Resetting = "Ayarlar sıfırlanıyor…"
+    ResetDone = "Sıfırlama tamamlandı: {0} ayar geri alındı"; ResetWarn = "{0} ayar geri alındı, {1} başarısız (ayrıntılar günlükte)"
+    CloseBusyTitle = "Bir işlem devam ediyor"; CloseBusyMsg = "Şu an bir işlem çalışıyor. Şimdi kapatırsanız yarım kalabilir. Yine de kapatılsın mı?"; CloseBusyOk = "Kapat"
+    CleanNoOps = "En az bir temizlik seçeneği işaretleyin"
     PermWarnTitle = "Donanım erişimi kapatılacak"; PermWarnMsg = "Şu izinler kapatılacak: {0}.`n`nBu izinleri kullanan uygulamalar (Discord, Teams, görüntülü görüşme, hava durumu vb.) çalışmayabilir."
 }
 EN = @{
-    NavCaption = "MENU"; NavHome = "Overview"; NavTweaks = "Optimizations"; NavMemory = "Memory (RAM)"; NavSettings = "Settings"
+    NavGrp_main = "GENERAL"; NavGrp_perf = "PERFORMANCE"; NavGrp_clean = "CLEANUP"; NavGrp_system = "SYSTEM"; NavHome = "Overview"; NavTweaks = "Optimizations"; NavMemory = "Memory (RAM)"; NavSettings = "Settings"
     Title_Home = "Overview"; Sub_Home = "Live system status and quick actions"
     Title_Tweaks = "Optimizations"; Sub_Tweaks = "Each setting's real state is read — turning it off restores the Windows default"
     Title_Memory = "Memory (RAM)"; Sub_Memory = "Live memory monitoring and optimization"
@@ -187,8 +226,8 @@ EN = @{
     UpdChecking = "Checking for updates…"; UpdLatest = "You are on the latest version (v{0})"
     UpdAvailable = "New version available: v{0} — update from the sidebar"; UpdFail = "Could not reach the update server"
     Updated = "Update complete — you are on v{0}"
-    HeroCaption = "OPTIMIZATION STATUS"; HeroLabel = "  optimizations active"; HeroHint = "{1} of {0} recommended settings active"
-    BtnQuickOptimize = "Apply Recommended"; BtnGoTweaks = "See all settings"
+    HeroCaption = "OPTIMIZATION STATUS"; HeroLabel = "  optimizations applied"; HeroHint = "{1} of {0} recommended settings applied"
+    BtnQuickOptimize = "Apply Recommended"; BtnGoTweaks = "Details"
     CpuTitle = "Processor"; RamTitle = "Memory"; DiskTitle = "System Disk"
     CpuSub = "{0} logical cores · {1} processes"; RamSub = "{0} / {1} in use"; DiskSub = "{0} free · {1} total"
     SysTitle = "System Info"; LblOs = "Operating system"; LblBuild = "Build"; LblCpu = "Processor"; LblRam = "Physical memory"; LblUptime = "Uptime"; LblProc = "Processes"
@@ -271,7 +310,7 @@ EN = @{
     SvCautionTitle = "Service needs caution"; SvContinue = "Continue"
     SvRecTitle = "Apply safe suggestions?"; SvRecMsg = "The startup type of {0} services will be set to the suggested value. Services marked 'Caution' are not included. All changes can be undone."
     SvRecDone = "{0} services updated"; SvApply = "Apply"
-    SvBadgeLocked = "PROTECTED"
+    SvBadgeLocked = "PROTECTED"; SvBadgeNoDisable = "DON'T DISABLE"; SvNoDisableTip = "This service can't be disabled: browser passwords/sessions or games would stop working"
     SvProt_vendor = "Security software protects itself; manage this service from its own app settings."
     SvProt_acl = "The vendor does not allow this service's settings to be changed (even by administrators)."
     SvProt_user = "Per-user service instance; Windows manages it automatically through its template."
@@ -287,6 +326,18 @@ EN = @{
     SuJunkBadge = "CAN DISABLE"; BtnSuDisableJunk = "Disable unneeded"
     SuJunkTitle = "Disable unneeded startup items?"; SuJunkMsg = "{0} items will no longer start with Windows:`n`n{1}`n`nApps are not removed; you can open them normally when needed."
     SuJunkDone = "{0} startup items disabled"; SuJunkNone = "No unneeded items to disable"
+    BtnResetAll = "Reset"; BtnReset2 = "Reset…"; SetResetT = "Reset all settings"
+    SetResetD = "Undoes every change Windows Optimizer made: optimizations, services and startup items."
+    RecAllTitle = "Apply recommended settings?"; RecAllMsg = "The following will be done:"; RecAllOk = "Apply"; RecAllPlanning = "Preparing recommendations…"
+    RecAllTw = "•  {0} optimizations will be applied"; RecAllSu = "•  {0} unneeded startup items will be disabled ({1})"; RecAllSv = "•  {0} services will be set to their safe value"
+    RecAllFoot = "Everything can be undone with 'Reset'."; RecAllNone = "Your PC already uses the recommended settings; nothing to do."
+    RecAllNoneTitle = "All good"; RecAllDone = "Recommended settings applied: {0} changes"; RecAllWarn = "{0} changes applied, {1} failed (see log)"
+    ResetTitle = "Reset all settings?"
+    ResetMsg = "Changes made by Windows Optimizer will be undone:`n`n•  {0} recorded settings return to their original value`n•  {1} services return to their previous startup type`n•  {2} startup items return to their previous state`n`n'Windows defaults' instead sets every applied optimization to Windows' default value (including changes made before the change log existed)."
+    ResetOk = "Restore original"; ResetAlt = "Windows defaults"; Resetting = "Resetting settings…"
+    ResetDone = "Reset complete: {0} settings restored"; ResetWarn = "{0} settings restored, {1} failed (see log)"
+    CloseBusyTitle = "An operation is running"; CloseBusyMsg = "Something is still running. Closing now may leave it unfinished. Close anyway?"; CloseBusyOk = "Close"
+    CleanNoOps = "Select at least one cleaning option"
     PermWarnTitle = "Hardware access will be blocked"; PermWarnMsg = "These permissions will be blocked: {0}.`n`nApps that use them (Discord, Teams, video calls, weather etc.) may stop working."
 }
 }
@@ -683,14 +734,6 @@ $xaml = @'
             </StackPanel>
           </Grid>
 
-          <TextBlock x:Name="NavCaption" DockPanel.Dock="Top" Style="{StaticResource Caption}" Margin="26,4,0,8"/>
-          <RadioButton x:Name="NavHome"     DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE80F;" IsChecked="True"/>
-          <RadioButton x:Name="NavTweaks"   DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE945;"/>
-          <RadioButton x:Name="NavMemory"   DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE9D9;"/>
-          <RadioButton x:Name="NavStartup"  DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE7E8;"/>
-          <RadioButton x:Name="NavServices" DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE90F;"/>
-          <RadioButton x:Name="NavDisk"     DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xEDA2;"/>
-          <RadioButton x:Name="NavSettings" DockPanel.Dock="Top" Style="{StaticResource NavBtn}" Tag="&#xE713;"/>
 
           <StackPanel DockPanel.Dock="Bottom" Margin="0,0,0,16">
             <Border x:Name="UpdateCard" Visibility="Collapsed" Margin="14,0,14,14" Padding="14" CornerRadius="11"
@@ -730,7 +773,9 @@ $xaml = @'
               <Button x:Name="BtnWebsite" Content="Website" Style="{StaticResource LinkBtn}"/>
             </WrapPanel>
           </StackPanel>
-          <Grid/>
+          <ScrollViewer x:Name="NavScroll">
+            <StackPanel x:Name="NavPanel" Margin="0,0,0,10"/>
+          </ScrollViewer>
         </DockPanel>
       </Border>
 
@@ -750,7 +795,7 @@ $xaml = @'
           </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="1" Margin="30,0,16,0">
+        <Grid x:Name="PagesHost" Grid.Row="1" Margin="30,0,16,0">
 
           <!-- ============ HOME ============ -->
           <ScrollViewer x:Name="PageHome">
@@ -774,7 +819,11 @@ $xaml = @'
                   </StackPanel>
                   <StackPanel Grid.Column="1" VerticalAlignment="Center" Width="220">
                     <Button x:Name="BtnQuickOptimize" Style="{StaticResource PrimaryBtn}" Height="44"/>
-                    <Button x:Name="BtnGoTweaks" Style="{StaticResource SecondaryBtn}" Margin="0,10,0,0"/>
+                    <Grid Margin="0,10,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                      <Button x:Name="BtnGoTweaks" Style="{StaticResource SecondaryBtn}"/>
+                      <Button x:Name="BtnResetAll" Grid.Column="2" Style="{StaticResource SecondaryBtn}"/>
+                    </Grid>
                   </StackPanel>
                 </Grid>
               </Border>
@@ -1213,6 +1262,12 @@ $xaml = @'
               </Border>
               <Border Style="{StaticResource Card}" Margin="0,0,0,12">
                 <Grid>
+                  <StackPanel Margin="0,0,220,0"><TextBlock x:Name="SetResetT" Style="{StaticResource CardTitle}"/><TextBlock x:Name="SetResetD" Style="{StaticResource Desc}" Margin="0,4,0,0"/></StackPanel>
+                  <Button x:Name="BtnReset2" Style="{StaticResource SecondaryBtn}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                </Grid>
+              </Border>
+              <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <Grid>
                   <StackPanel Margin="0,0,220,0"><TextBlock x:Name="SetRestoreT" Style="{StaticResource CardTitle}"/><TextBlock x:Name="SetRestoreD" Style="{StaticResource Desc}" Margin="0,4,0,0"/></StackPanel>
                   <Button x:Name="BtnRestore2" Style="{StaticResource SecondaryBtn}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                 </Grid>
@@ -1244,6 +1299,7 @@ $xaml = @'
               <TextBlock x:Name="StatusText" FontSize="12" Foreground="#B4B4CC" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+              <Button x:Name="BtnStatusRestart" Style="{StaticResource SecondaryBtn}" Height="26" FontSize="11.5" Padding="10,0" Margin="0,0,14,0" Visibility="Collapsed"/>
               <TextBlock Text="&#xE7EF;" Style="{StaticResource Ico}" FontSize="12" Foreground="#7A7A94" Margin="0,0,6,0"/>
               <TextBlock x:Name="AdminBadge" FontSize="11.5" Foreground="#7A7A94"/>
             </StackPanel>
@@ -1258,7 +1314,16 @@ $xaml = @'
 
 try {
     $window = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader ([xml]$xaml)))
-    function N([string]$Name) { $window.FindName($Name) }
+    $script:Named = @{}
+    $script:Frags = New-Object System.Collections.ArrayList
+    function N([string]$Name) {
+        $c = $script:Named[$Name]
+        if ($c) { return $c }
+        $c = $window.FindName($Name)
+        if (-not $c) { foreach ($f in $script:Frags) { $c = $f.FindName($Name); if ($c) { break } } }
+        if ($c) { $script:Named[$Name] = $c }
+        return $c
+    }
 
     $BrushConv = New-Object Windows.Media.BrushConverter
     function Brush([string]$Hex) { $BrushConv.ConvertFromString($Hex) }
@@ -1308,6 +1373,7 @@ try {
         </StackPanel>
       </Grid>
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
+        <Button x:Name="BtnAlt" MinWidth="110" Margin="0,0,10,0" Visibility="Collapsed"/>
         <Button x:Name="BtnCancel" MinWidth="110" Margin="0,0,10,0" IsCancel="True"/>
         <Button x:Name="BtnOk" MinWidth="130" IsDefault="True"/>
       </StackPanel>
@@ -1317,7 +1383,7 @@ try {
 '@
 
     # Kind: warn | info | error | ok ; Cancel bossa tek dugmeli bilgi penceresi
-    function New-WoDialog([string]$Title, [string]$Message, [string]$Kind = "warn", [string]$Ok = $null, [string]$Cancel = $null, [switch]$Danger) {
+    function New-WoDialog([string]$Title, [string]$Message, [string]$Kind = "warn", [string]$Ok = $null, [string]$Cancel = $null, [switch]$Danger, [string]$Alt = $null) {
         $dlg = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader ([xml]$DialogXaml)))
         $kinds = @{
             warn  = @("#3A2E10", "#FBBF24", 0xE7BA); info = @("#231F3F", "#A78BFA", 0xE946)
@@ -1333,18 +1399,26 @@ try {
         $cancelBtn.Style = $window.FindResource("SecondaryBtn")
         $okBtn.Content = if ($Ok) { $Ok } else { T "DlgOk" }
         if ($Cancel) { $cancelBtn.Content = $Cancel } else { $cancelBtn.Visibility = "Collapsed" }
-        $okBtn.Add_Click({ param($s) $w = [Windows.Window]::GetWindow($s); $w.Tag = $true; $w.Close() })
+        $okBtn.Add_Click({ param($s) $w = [Windows.Window]::GetWindow($s); $w.Tag = "ok"; $w.Close() })
+        if ($Alt) {
+            $dlg.Width = 640
+            $altBtn = $dlg.FindName("BtnAlt"); $altBtn.Style = $window.FindResource("SecondaryBtn"); $altBtn.Content = $Alt; $altBtn.Visibility = "Visible"
+            $altBtn.Add_Click({ param($s) $w = [Windows.Window]::GetWindow($s); $w.Tag = "alt"; $w.Close() })
+        }
         $cancelBtn.Add_Click({ param($s) [Windows.Window]::GetWindow($s).Close() })
         $dlg.Add_MouseLeftButtonDown({ param($s) try { $s.DragMove() } catch {} })
         return $dlg
     }
 
-    function Show-WoDialog([string]$Title, [string]$Message, [string]$Kind = "warn", [string]$Ok = $null, [string]$Cancel = $null, [switch]$Danger) {
-        $dlg = New-WoDialog -Title $Title -Message $Message -Kind $Kind -Ok $Ok -Cancel $Cancel -Danger:$Danger
+    function Show-WoChoice([string]$Title, [string]$Message, [string]$Kind = "warn", [string]$Ok = $null, [string]$Cancel = $null, [switch]$Danger, [string]$Alt = $null) {
+        $dlg = New-WoDialog -Title $Title -Message $Message -Kind $Kind -Ok $Ok -Cancel $Cancel -Danger:$Danger -Alt $Alt
         $dlg.Owner = $window
         (N "Overlay").Visibility = "Visible"
         try { [void]$dlg.ShowDialog() } finally { (N "Overlay").Visibility = "Collapsed" }
-        return [bool]$dlg.Tag
+        return $dlg.Tag
+    }
+    function Show-WoDialog([string]$Title, [string]$Message, [string]$Kind = "warn", [string]$Ok = $null, [string]$Cancel = $null, [switch]$Danger) {
+        return ((Show-WoChoice -Title $Title -Message $Message -Kind $Kind -Ok $Ok -Cancel $Cancel -Danger:$Danger) -eq "ok")
     }
 
     # ---------------- DURUM ÇUBUĞU ----------------
@@ -1382,22 +1456,65 @@ try {
 
     # ---------------- SAYFALAR ----------------
     $Pages = @{ Home = "PageHome"; Tweaks = "PageTweaks"; Memory = "PageMemory"; Startup = "PageStartup"; Services = "PageServices"; Disk = "PageDisk"; Settings = "PageSettings" }
-    $PageOrder = @("Home", "Tweaks", "Memory", "Startup", "Services", "Disk", "Settings")
+    $script:PageDefs = [ordered]@{}
+    $NavIcons = @{ Home = 0xE80F; Tweaks = 0xE945; Memory = 0xE9D9; Startup = 0xE7E8; Services = 0xE90F; Disk = 0xEDA2; Settings = 0xE713 }
+    $NavGroups = [ordered]@{
+        main   = @("Home", "Tweaks")
+        perf   = @("Memory", "Game", "Startup", "Services")
+        clean  = @("Disk", "Analyzer", "Apps")
+        system = @("Network", "Health", "Privacy", "Settings")
+    }
+    $PageOrder = @($NavGroups.Values | ForEach-Object { $_ })
+
+    function Add-WoStrings([hashtable]$TR, [hashtable]$EN) {
+        foreach ($k in $TR.Keys) { $Str.TR[$k] = $TR[$k] }
+        foreach ($k in $EN.Keys) { $Str.EN[$k] = $EN[$k] }
+    }
+
+    # Sayfa parcasi: kendi XAML'i (DynamicResource ile stiller), metinleri ve olaylari olan bagimsiz sayfa
+    function Register-WoPage([hashtable]$Def) {
+        $frag = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader ([xml]$Def.Xaml)))
+        $frag.Visibility = "Collapsed"
+        [void](N "PagesHost").Children.Add($frag)
+        [void]$script:Frags.Add($frag)
+        $Pages[$Def.Name] = $frag.Name
+        $NavIcons[$Def.Name] = $Def.Icon
+        $script:PageDefs[$Def.Name] = $Def
+    }
+
+    function Build-Nav {
+        $panel = N "NavPanel"; $panel.Children.Clear()
+        $navStyle = $window.FindResource("NavBtn"); $capStyle = $window.FindResource("Caption")
+        foreach ($g in $NavGroups.Keys) {
+            $cap = New-Object Windows.Controls.TextBlock
+            $cap.Style = $capStyle; $cap.Text = T "NavGrp_$g"; $cap.Margin = New-Object Windows.Thickness(26, 10, 0, 4); $cap.FontSize = 10.5
+            [void]$panel.Children.Add($cap)
+            foreach ($pg in $NavGroups[$g]) {
+                if (-not $Pages.ContainsKey($pg)) { continue }
+                $rb = New-Object Windows.Controls.RadioButton
+                $rb.Style = $navStyle; $rb.Height = 38; $rb.Margin = New-Object Windows.Thickness(12, 1, 12, 1)
+                $rb.Tag = [string][char]$NavIcons[$pg]; $rb.Content = T "Nav$pg"; $rb.Name = "Nav$pg"
+                $rb.IsChecked = ($pg -eq $script:Page)
+                $rb.Add_Checked({ param($s) $n = $s.Name.Substring(3); if ($script:Page -ne $n) { Show-Page $n } })
+                $script:Named["Nav$pg"] = $rb
+                [void]$panel.Children.Add($rb)
+            }
+        }
+    }
     $script:Page = "Home"
     function Show-Page([string]$Name) {
         $script:Page = $Name
         foreach ($k in $Pages.Keys) { (N $Pages[$k]).Visibility = if ($k -eq $Name) { "Visible" } else { "Collapsed" } }
         (N "PageTitle").Text = T "Title_$Name"
         (N "PageSub").Text   = T "Sub_$Name"
-        (N "Nav$Name").IsChecked = $true
+        $nb = N "Nav$Name"; if ($nb) { $nb.IsChecked = $true }
+        $def = $script:PageDefs[$Name]
+        if ($def -and $def.OnShow) { try { & $def.OnShow } catch { Write-WoLog "Sayfa ($Name): $_" } }
         if ($Name -eq "Memory") { $window.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background, [Action]{ Draw-MemChart; Refresh-ProcList }) | Out-Null }
         if ($Name -eq "Startup" -and -not $script:StartupLoaded) { Load-Startup }
         if ($Name -eq "Services" -and -not $script:SvcLoaded) { Load-Services }
         if ($Name -eq "Disk") { (N "PageDisk").ScrollToTop(); Show-Drives; if (-not $script:DiskScanned) { Start-DiskScan } }
         if ($Name -eq "Home") { $window.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background, [Action]{ Draw-Sparks }) | Out-Null }
-    }
-    foreach ($p in $PageOrder) {
-        (N "Nav$p").Add_Checked({ param($s) $n = $s.Name.Substring(3); if ($script:Page -ne $n) { Show-Page $n } })
     }
 
     # ================= TWEAKS =================
@@ -1543,7 +1660,7 @@ try {
         (N "TwProgress").Value = [int](100 * $active / [Math]::Max([double]1, $total))
         $btn = N "BtnApplyTweaks"
         $btn.Content = if ($pending -gt 0) { (T "BtnApplyN") -f $pending } else { T "BtnApply0" }
-        $btn.IsEnabled = ($pending -gt 0) -and -not $script:Applying
+        $btn.IsEnabled = ($pending -gt 0) -and -not $script:Applying -and -not $script:GlobalBusy
 
         (N "HeroValue").Text = "$active / $total"
         (N "HeroProgress").Value = [int](100 * $active / [Math]::Max([double]1, $total))
@@ -1552,7 +1669,7 @@ try {
 
     $script:Applying = $false
     function Invoke-TweakChanges {
-        if ($script:Applying) { return }
+        if ($script:Applying -or $script:GlobalBusy) { return }
         $apply = @(); $revert = @()
         foreach ($t in $TweakCatalog) {
             $want = Get-WantApplied $t
@@ -1618,7 +1735,129 @@ try {
         Sync-TweakSwitches
         Update-TweakSummary
     })
-    (N "BtnQuickOptimize").Add_Click({ Select-Recommended; Invoke-TweakChanges })
+    $script:GlobalBusy = $false
+    $ModPaths = @("Tweaks", "Startup", "Services", "Network") | ForEach-Object { Join-Path $AppDir "modules\$_.ps1" }
+
+    function Set-GlobalBusy([bool]$Busy) {
+        $script:GlobalBusy = $Busy
+        foreach ($b in @("BtnQuickOptimize", "BtnResetAll", "BtnReset2", "BtnApplyTweaks")) { (N $b).IsEnabled = -not $Busy }
+        if (-not $Busy) { Update-TweakSummary }
+    }
+
+    # Islem sonrasi tum sayfalari yenile
+    function Sync-AllAfterChange($Restarts) {
+        Refresh-TweakStates; Sync-TweakSwitches; Update-TweakSummary
+        if ($script:StartupLoaded) { Load-Startup }
+        if ($script:SvcLoaded) { Load-Services }
+        foreach ($r in @($Restarts | Where-Object { $_ })) { Set-RestartNeed $r }
+    }
+
+    function Start-RecommendedAll {
+        if ($script:GlobalBusy -or $script:Applying) { return }
+        Set-GlobalBusy $true
+        Set-Status (T "RecAllPlanning") "busy"
+        Start-Bg -Work {
+            param($Mods)
+            foreach ($m in $Mods) { . $m }
+            [pscustomobject]@{
+                Tweaks   = @($TweakCatalog | Where-Object { $_.Rec -and -not (Test-WoTweak $_) } | ForEach-Object Id)
+                Startup  = @(Get-WoStartupItems | Where-Object { $_.Junk -and $_.Enabled })
+                Services = @(Get-WoServices | Where-Object { $_.Category -eq "rec" -and $_.Risk -eq "safe" -and $_.Protected -eq "none" })
+            }
+        } -ArgList @(, $ModPaths) -Done {
+            param($out, $err)
+            $plan = @($out) | Select-Object -Last 1
+            if ($err -or -not $plan) { Set-GlobalBusy $false; Set-Status "$err" "err"; return }
+            $tw = @($plan.Tweaks); $su = @($plan.Startup); $sv = @($plan.Services)
+            if (($tw.Count + $su.Count + $sv.Count) -eq 0) {
+                Set-GlobalBusy $false; Set-Status (T "StatusReady") "info"
+                [void](Show-WoDialog -Title (T "RecAllNoneTitle") -Message (T "RecAllNone") -Kind "ok"); return
+            }
+            $lines = @()
+            if ($tw.Count) { $lines += (T "RecAllTw") -f $tw.Count }
+            if ($su.Count) {
+                $names = ($su | Select-Object -First 4 | ForEach-Object { if ($_.Description -and $_.Name -match '_[0-9A-F]{16,}') { $_.Description } else { $_.Name } }) -join ", "
+                if ($su.Count -gt 4) { $names += ", …" }
+                $lines += (T "RecAllSu") -f $su.Count, $names
+            }
+            if ($sv.Count) { $lines += (T "RecAllSv") -f $sv.Count }
+            $msg = (T "RecAllMsg") + "`n`n" + ($lines -join "`n") + "`n`n" + (T "RecAllFoot")
+            if (-not (Show-WoDialog -Title (T "RecAllTitle") -Message $msg -Kind "info" -Ok (T "RecAllOk") -Cancel (T "DlgCancel"))) {
+                Set-GlobalBusy $false; Set-Status (T "StatusReady") "info"; return
+            }
+            $risky = @($tw | Where-Object { $_ -in @("PermLocation", "PermMic", "PermCamera") })
+            Set-Status (T "Applying") "busy"
+            $svJobs = @($sv | ForEach-Object { @{ Name = $_.Name; Mode = $_.RecStart; Cur = $(if ($_.Delayed -and $_.StartMode -eq "Automatic") { "AutomaticDelayed" } else { $_.StartMode }) } })
+            Start-Bg -Work {
+                param($Mods, $Tw, $Su, $Sv)
+                foreach ($m in $Mods) { . $m }
+                foreach ($id in $Tw) {
+                    $t = Get-WoTweak $id
+                    try { Invoke-WoTweak $t; [pscustomobject]@{ What = $id; Ok = $true; Restart = $t.Restart } }
+                    catch { [pscustomobject]@{ What = $id; Ok = $false; Err = $_.Exception.Message } }
+                }
+                foreach ($it in $Su) {
+                    try { Set-WoStartupItem $it $false; [pscustomobject]@{ What = $it.Name; Ok = $true } }
+                    catch { [pscustomobject]@{ What = $it.Name; Ok = $false; Err = $_.Exception.Message } }
+                }
+                foreach ($j in $Sv) {
+                    try { Set-WoServiceStart $j.Name $j.Mode $j.Cur; [pscustomobject]@{ What = $j.Name; Ok = $true } }
+                    catch { [pscustomobject]@{ What = $j.Name; Ok = $false; Err = $_.Exception.Message } }
+                }
+            } -ArgList @($ModPaths, [string[]]$tw, $su, $svJobs) -Done {
+                param($out, $err)
+                Set-GlobalBusy $false
+                $res = @($out | Where-Object { $_.What })
+                $ok = @($res | Where-Object Ok).Count; $fail = @($res | Where-Object { -not $_.Ok })
+                foreach ($f in $fail) { Write-WoLog "Oneri hatasi ($($f.What)): $($f.Err)" }
+                if ($err) { Write-WoLog "Oneri isi hatasi: $err" }
+                Sync-AllAfterChange @($res | Where-Object Ok | ForEach-Object Restart)
+                if ($fail.Count -eq 0) { Set-Status ((T "RecAllDone") -f $ok) "ok" } else { Set-Status ((T "RecAllWarn") -f $ok, $fail.Count) "warn" }
+            }
+        }
+    }
+    (N "BtnQuickOptimize").Add_Click({ Start-RecommendedAll })
+
+    # ---------- Sifirla ----------
+    function Start-ResetAll {
+        if ($script:GlobalBusy -or $script:Applying) { return }
+        $jc = Get-WoJournalCount
+        $svc = 0; try { $svc = @((Get-Content (Join-Path $AppDir "services-backup.json") -Raw -Encoding UTF8 | ConvertFrom-Json).PSObject.Properties).Count } catch {}
+        $su = 0; try { $su = @((Get-Content (Join-Path $AppDir "startup-backup.json") -Raw -Encoding UTF8 | ConvertFrom-Json).PSObject.Properties).Count } catch {}
+        $choice = Show-WoChoice -Title (T "ResetTitle") -Message ((T "ResetMsg") -f $jc, $svc, $su) -Kind "warn" -Ok (T "ResetOk") -Alt (T "ResetAlt") -Cancel (T "DlgCancel") -Danger
+        if ($choice -notin @("ok", "alt")) { return }
+        Set-GlobalBusy $true
+        Set-Status (T "Resetting") "busy"
+        Start-Bg -Work {
+            param($Mods, $Mode)
+            foreach ($m in $Mods) { . $m }
+            if ($Mode -eq "alt") {
+                foreach ($t in $TweakCatalog) {
+                    if (Test-WoTweak $t) {
+                        try { Invoke-WoTweak $t -Revert; [pscustomobject]@{ What = $t.Id; Ok = $true; Restart = $t.Restart } }
+                        catch { [pscustomobject]@{ What = $t.Id; Ok = $false; Err = $_.Exception.Message } }
+                    }
+                }
+            } else {
+                foreach ($r in (Restore-WoJournal)) { [pscustomobject]@{ What = $r.Key; Ok = $r.Ok; Err = $r.Err; Restart = "logoff" } }
+            }
+            foreach ($r in (Restore-AllWoServices)) { [pscustomobject]@{ What = $r.Name; Ok = $r.Ok; Err = $r.Err } }
+            foreach ($r in (Restore-WoStartupBackup)) { [pscustomobject]@{ What = $r.Name; Ok = $r.Ok; Err = $r.Err } }
+            foreach ($r in (Restore-WoNetwork)) { [pscustomobject]@{ What = $r.Name; Ok = $r.Ok; Err = $r.Err } }
+        } -ArgList @($ModPaths, $choice) -Done {
+            param($out, $err)
+            Set-GlobalBusy $false
+            $res = @($out | Where-Object { $_.What })
+            $ok = @($res | Where-Object Ok).Count; $fail = @($res | Where-Object { -not $_.Ok })
+            foreach ($f in $fail) { Write-WoLog "Sifirlama hatasi ($($f.What)): $($f.Err)" }
+            if ($err) { Write-WoLog "Sifirlama isi hatasi: $err" }
+            $restarts = @($res | Where-Object { $_.Ok -and $_.Restart } | ForEach-Object Restart | Select-Object -Unique)
+            Sync-AllAfterChange $restarts
+            if ($fail.Count -eq 0) { Set-Status ((T "ResetDone") -f $ok) "ok" } else { Set-Status ((T "ResetWarn") -f $ok, $fail.Count) "warn" }
+        }
+    }
+    (N "BtnResetAll").Add_Click({ Start-ResetAll })
+    (N "BtnReset2").Add_Click({ Start-ResetAll })
     (N "BtnGoTweaks").Add_Click({ Show-Page "Tweaks" })
 
     # ================= EXPLORER / GERİ YÜKLEME / KISAYOL =================
@@ -1643,13 +1882,14 @@ try {
         Update-RestartBar
     }
     function Update-RestartBar {
-        $bar = N "RestartBar"
-        if (-not $script:RestartNeed) { $bar.Visibility = "Collapsed"; return }
+        $bar = N "RestartBar"; $sb = N "BtnStatusRestart"
+        if (-not $script:RestartNeed) { $bar.Visibility = "Collapsed"; $sb.Visibility = "Collapsed"; return }
+        $sb.Visibility = "Visible"; $sb.Content = "↻  " + (T "RestartBtn_$($script:RestartNeed)")
         $bar.Visibility = "Visible"
         (N "RestartText").Text = if ($script:RestartNeed -eq "explorer") { T "RestartText" } else { T "RestartText_$($script:RestartNeed)" }
         (N "BtnRestartExplorer").Content = T "RestartBtn_$($script:RestartNeed)"
     }
-    (N "BtnRestartExplorer").Add_Click({
+    function Invoke-RestartAction {
         switch ($script:RestartNeed) {
             "reboot" {
                 if (Show-WoDialog -Title (T "RebootTitle") -Message (T "RebootMsg") -Kind "warn" -Ok (T "RestartBtn_reboot") -Cancel (T "DlgCancel") -Danger) {
@@ -1665,7 +1905,9 @@ try {
             }
             default { Restart-Explorer }
         }
-    })
+    }
+    (N "BtnRestartExplorer").Add_Click({ Invoke-RestartAction })
+    (N "BtnStatusRestart").Add_Click({ Invoke-RestartAction })
     (N "QaExplorer").Add_Click({ Restart-Explorer })
 
     $script:RestoreBusy = $false
@@ -1898,6 +2140,8 @@ try {
 
     function Start-RamClean([switch]$Auto) {
         if ($script:Cleaning) { return }
+        $ops = Get-RamOps
+        if (-not ($ops.Values -contains $true)) { if (-not $Auto) { Set-Status (T "CleanNoOps") "warn" }; return }
         $script:Cleaning = $true
         $script:CleanAuto = [bool]$Auto
         $script:LastClean = Get-Date
@@ -1926,6 +2170,9 @@ try {
 
             $failed = @($r.Codes.Keys | Where-Object { $r.Codes[$_] -ne 0 } | ForEach-Object { "{0} (0x{1:X8})" -f $_, $r.Codes[$_] })
             $prefix = if ($script:CleanAuto) { T "CleanAuto" } else { "" }
+            if ($script:CleanAuto -and -not $window.IsVisible -and (Get-Command Show-WoTrayTip -ErrorAction SilentlyContinue)) {
+                Show-WoTrayTip "Windows Optimizer" ((T "CleanOK") -f (Fmt-GB ([Math]::Max([double]0, $gain))), $r.Ms)
+            }
             if ($failed.Count -gt 0) { Set-Status ($prefix + ((T "CleanWarn") -f ($failed -join ", "))) "warn" }
             else { Set-Status ($prefix + ((T "CleanOK") -f (Fmt-GB ([Math]::Max([double]0, $gain))), $r.Ms)) "ok" }
             Draw-MemChart
@@ -2036,7 +2283,8 @@ try {
                 (N "BtnClean").Content = (T "Cleaning") + $dots
             }
             if ($script:UpdSync) { Update-UpdProgress }
-            if ($script:CloseAt -and (Get-Date) -ge $script:CloseAt) { $script:CloseAt = $null; $window.Close() }
+            if ($script:CloseAt -and (Get-Date) -ge $script:CloseAt) { $script:CloseAt = $null; $script:ForceClose = $true; $window.Close() }
+            if ($script:SvSearchAt -and (Get-Date) -ge $script:SvSearchAt) { $script:SvSearchAt = $null; if ($script:SvcLoaded) { Build-ServiceList; (N "SvScroll").ScrollToTop() } }
         } catch { Write-WoLog "Fast tick hatasi: $_" }
     })
 
@@ -2228,7 +2476,7 @@ try {
                     $im = New-Object Windows.Controls.Image; $im.Source = $img; $im.Width = 22; $im.Height = 22
                     $iconBox.Child = $im
                 } else {
-                    $lt = New-Tb ("$($it.Name)".Substring(0, 1).ToUpper()) 14 "#A78BFA"; $lt.FontWeight = [Windows.FontWeights]::Bold
+                    $lt = New-Tb $(if ($it.Name) { "$($it.Name)".Substring(0, 1).ToUpper() } else { "?" }) 14 "#A78BFA"; $lt.FontWeight = [Windows.FontWeights]::Bold
                     $lt.HorizontalAlignment = "Center"; $lt.VerticalAlignment = "Center"; $iconBox.Child = $lt
                 }
 
@@ -2320,7 +2568,9 @@ try {
 
     function Update-ServiceItem($svc) {
         $rank = @{ Automatic = 2; Manual = 1; Disabled = 0 }
-        $svc.NeedsChange = $svc.RecStart -and $rank.ContainsKey($svc.StartMode) -and $rank[$svc.StartMode] -gt $rank[$svc.RecStart]
+        $svc.NeedsChange = ($svc.RecStart -and $rank.ContainsKey($svc.StartMode) -and $rank[$svc.StartMode] -gt $rank[$svc.RecStart]) -or
+                           ($svc.NoDisable -and $svc.StartMode -eq "Disabled")
+        if ($svc.NoDisable -and $svc.StartMode -ne "Disabled" -and $svc.RecStart -eq "Manual" -and -not $svc.NeedsChange) { $svc.RecStart = $null }
         $svc.Category = if ($svc.NeedsChange) { "rec" } elseif (-not $svc.IsMicrosoft) { "third" } else { "ms" }
     }
 
@@ -2393,6 +2643,7 @@ try {
             if ($locked) { [void]$tr.Children.Add((New-Badge ("🔒 " + (T "SvBadgeLocked")) "#3A1520" "#FCA5A5")) }
             if ($svc.Category -eq "rec") { [void]$tr.Children.Add((New-Badge ((T "SvBadgeRec") -f (T "SvMode_$($svc.RecStart)")) "#2A2350" "#C4B5FD")) }
             if ($svc.RecStart -and $svc.Risk -eq "caution") { [void]$tr.Children.Add((New-Badge (T "SvBadgeCaution") "#3A2E10" "#FCD34D")) }
+            if ($svc.NoDisable) { [void]$tr.Children.Add((New-Badge (T "SvBadgeNoDisable") "#3A2E10" "#FCD34D")) }
             if (-not $svc.IsMicrosoft) { [void]$tr.Children.Add((New-Badge (T "SvBadgeThird") "#1E2A44" "#7DD3FC")) }
             elseif (-not $svc.RecStart) { [void]$tr.Children.Add((New-Badge (T "SvBadgeWin") "#1C1C2C" "#8A8AA6")) }
             $reason = if ($script:Lang -eq "TR") { $svc.ReasonTR } else { $svc.ReasonEN }
@@ -2421,6 +2672,7 @@ try {
                 $rb.Tag = @{ Svc = $svc; Mode = $m }; $rb.IsChecked = ($svc.StartMode -eq $m)
                 if ($m -eq "Disabled") { $rb.Margin = New-Object Windows.Thickness(0) }
                 if ($locked -or $svc.StartMode -notin @("Automatic", "Manual", "Disabled")) { $rb.IsEnabled = $false }
+                if ($m -eq "Disabled" -and $svc.NoDisable) { $rb.IsEnabled = $false; $rb.ToolTip = T "SvNoDisableTip" }
                 $rb.Add_Click({ param($s) Set-ServiceUi $s.Tag.Svc $s.Tag.Mode })
                 [void]$modes.Children.Add($rb)
             }
@@ -2447,7 +2699,7 @@ try {
             . $M1; . $M2
             Set-WoServiceStart $Name $Mode $Cur
             (Get-Service -Name $Name).Status.ToString()
-        } -ArgList @((Join-Path $AppDir "modules\Startup.ps1"), (Join-Path $AppDir "modules\Services.ps1"), $svc.Name, $Mode, $svc.StartMode) -Done {
+        } -ArgList @((Join-Path $AppDir "modules\Startup.ps1"), (Join-Path $AppDir "modules\Services.ps1"), $svc.Name, $Mode, $(if ($svc.Delayed -and $svc.StartMode -eq "Automatic") { "AutomaticDelayed" } else { $svc.StartMode })) -Done {
             param($out, $err)
             $script:SvcBusy = $false
             $p = $script:SvcPending; $svc = $p.Svc
@@ -2493,14 +2745,14 @@ try {
     }
 
     function Apply-SafeServiceRecs {
-        $targets = @($script:Services | Where-Object { $_.Category -eq "rec" -and $_.Risk -eq "safe" })
+        $targets = @($script:Services | Where-Object { $_.Category -eq "rec" -and $_.Risk -eq "safe" -and -not ($_.Protected -and $_.Protected -ne "none") })
         if ($targets.Count -eq 0 -or $script:SvcBusy) { return }
         $names = ($targets | ForEach-Object { "•  $($_.Display) → $(T "SvMode_$($_.RecStart)")" }) -join "`n"
         if (-not (Show-WoDialog -Title (T "SvRecTitle") -Message (((T "SvRecMsg") -f $targets.Count) + "`n`n" + $names) -Kind "info" -Ok (T "SvApply") -Cancel (T "DlgCancel"))) { return }
         $script:SvcBusy = $true
         (N "BtnSvApplyRec").IsEnabled = $false
         Set-Status (T "Applying") "busy"
-        $jobs = @($targets | ForEach-Object { @{ Name = $_.Name; Mode = $_.RecStart; Cur = $_.StartMode } })
+        $jobs = @($targets | ForEach-Object { @{ Name = $_.Name; Mode = $_.RecStart; Cur = $(if ($_.Delayed -and $_.StartMode -eq "Automatic") { "AutomaticDelayed" } else { $_.StartMode }) } })
         Start-Bg -Work {
             param($M1, $M2, $Jobs)
             . $M1; . $M2
@@ -2548,7 +2800,7 @@ try {
     }
     (N "SvSearch").Add_TextChanged({
         (N "SvSearchHint").Visibility = if ((N "SvSearch").Text) { "Collapsed" } else { "Visible" }
-        if ($script:SvcLoaded) { Build-ServiceList }
+        $script:SvSearchAt = (Get-Date).AddMilliseconds(300)
     })
 
     # ================= DİSK =================
@@ -2702,9 +2954,15 @@ try {
     (N "BtnDiskClean").Add_Click({ Start-DiskClean })
     (N "BtnCleanMgr").Add_Click({ Start-Process cleanmgr.exe })
 
+    # ================= EK SAYFALAR (pages\*.ps1) =================
+    foreach ($pf in @("Game", "Analyzer", "Apps", "Network", "Health", "Privacy", "Extras")) {
+        $pp = Join-Path $AppDir "pages\$pf.ps1"
+        if (Test-Path $pp) { try { . $pp } catch { Write-WoLog "Sayfa yuklenemedi ($pf): $_" } }
+    }
+
     # ================= DİL =================
     $LocNames = @(
-        "NavCaption", "UpdTitle", "HeroCaption", "HeroLabel", "BtnQuickOptimize", "BtnGoTweaks",
+        "UpdTitle", "HeroCaption", "HeroLabel", "BtnQuickOptimize", "BtnGoTweaks",
         "CpuTitle", "RamTitle", "DiskTitle", "SysTitle", "LblOs", "LblBuild", "LblCpu", "LblRam", "LblUptime", "LblProc",
         "QaTitle", "QaCleanT", "QaCleanD", "QaExplorerT", "QaExplorerD", "QaRestoreT", "QaRestoreD",
         "BtnSelRec", "BtnSelReset",
@@ -2714,7 +2972,7 @@ try {
         "ResTitle", "ResNone", "ResGainSub", "ResColBefore", "ResColAfter", "ResRowInUse", "ResRowStandby", "ResRowModified", "ResRowAvail",
         "ProcTitle", "MemNote", "SetLangT", "SetLangD", "SetUpdT", "BtnCheckUpdate", "SetShortcutT", "SetShortcutD", "BtnFixShortcut",
         "SetRestoreT", "SetRestoreD", "BtnRestore2", "SetLogT", "SetLogD", "BtnOpenLog", "SetAboutT", "AdminBadge",
-        "SuHint", "BtnSuTaskMgr", "BtnSuRefresh", "SvHint", "BtnSvRefresh", "BtnSvApplyRec", "SvSearchHint", "BtnSuDisableJunk", "DcTitle", "DcSub", "BtnDiskScan", "DcSelTitle", "BtnDiskClean", "DcNote", "BtnCleanMgr"
+        "SuHint", "BtnSuTaskMgr", "BtnSuRefresh", "BtnResetAll", "SetResetT", "SetResetD", "BtnReset2", "SvHint", "BtnSvRefresh", "BtnSvApplyRec", "SvSearchHint", "BtnSuDisableJunk", "DcTitle", "DcSub", "BtnDiskScan", "DcSelTitle", "BtnDiskClean", "DcNote", "BtnCleanMgr"
     )
     function Apply-Language {
         foreach ($n in $LocNames) {
@@ -2722,7 +2980,15 @@ try {
             if (-not $ctrl) { continue }
             if ($ctrl -is [Windows.Controls.TextBlock]) { $ctrl.Text = T $n } else { $ctrl.Content = T $n }
         }
-        foreach ($p in $PageOrder) { (N "Nav$p").Content = T "Nav$p" }
+        Build-Nav
+        foreach ($d in $script:PageDefs.Values) {
+            foreach ($n in @($d.Loc)) {
+                $ctrl = N $n
+                if (-not $ctrl) { continue }
+                if ($ctrl -is [Windows.Controls.TextBlock]) { $ctrl.Text = T $n } else { $ctrl.Content = T $n }
+            }
+            if ($d.OnLang) { try { & $d.OnLang } catch { Write-WoLog "Dil ($($d.Name)): $_" } }
+        }
         (N "Auto0").Content = T "AutoOff"
         (N "BtnLang").Content = if ($script:Lang -eq "TR") { "EN" } else { "TR" }
         (N "SideVersion").Text = "v$LocalVersion"
@@ -2761,11 +3027,25 @@ try {
     if ($Updated) { Set-Status ((T "Updated") -f $LocalVersion) "ok" }
 
     $window.Add_Closing({
+        param($s, $e)
+        if ($script:TrayIcon -and $Settings["trayClose"] -and -not $script:ReallyExit -and -not $script:ForceClose -and -not $Snapshot) {
+            $e.Cancel = $true
+            $window.Hide()
+            if (-not $script:TrayHintShown) { $script:TrayHintShown = $true; Show-WoTrayTip (T "TrayHintTitle") (T "TrayHintMsg") }
+            return
+        }
+        $busy = $script:GlobalBusy -or $script:Applying -or $script:DiskBusy -or $script:Cleaning -or ($script:UpdSync -and $script:UpdSync.Stage -ne "ready")
+        if ($busy -and -not $script:ForceClose -and -not $Snapshot) {
+            if (-not (Show-WoDialog -Title (T "CloseBusyTitle") -Message (T "CloseBusyMsg") -Kind "warn" -Ok (T "CloseBusyOk") -Cancel (T "DlgCancel") -Danger)) { $e.Cancel = $true; return }
+        }
         $timer.Stop(); $fast.Stop()
         if (-not $Snapshot) { Save-WoSettings }
+        if ($script:TrayIcon) { $script:TrayIcon.Visible = $false; $script:TrayIcon.Dispose(); $script:TrayIcon = $null }
     })
 
     $window.Add_ContentRendered({
+        if ($script:TimersStarted) { return }
+        $script:TimersStarted = $true
         On-Tick
         $timer.Start(); $fast.Start()
         if (-not $Snapshot) { Check-Update }
@@ -2790,31 +3070,27 @@ try {
                 $enc.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($rtb))
                 $fs = [IO.File]::Create((Join-Path $Snapshot "$name.png")); $enc.Save($fs); $fs.Close()
             }
-            switch ($script:SnapStep) {
-                4  { & $snap "1-Home"; Show-Page "Tweaks" }
-                5  { & $snap "2-Tweaks"; Show-Page "Memory" }
-                8  { & $snap "3-Memory"; Start-RamClean }
-                12 { & $snap "4-Memory-after"; Show-Page "Startup" }
-                16 { & $snap "5-Startup"; Show-Page "Services" }
-                20 { & $snap "5b-Services"; (N "SvFLocked").IsChecked = $true }
-                21 { & $snap "5c-Services-Locked"; $script:RestartNeed = "reboot"; Update-RestartBar; Show-Page "Tweaks" }
-                22 { & $snap "5d-RestartBar"; Show-Page "Disk" }
-                24 { & $snap "6-Disk"; Show-Page "Settings" }
-                25 { & $snap "7-Settings"
-                     $script:SnapDlg = New-WoDialog -Title (T "DcConfirmTitle") -Message (((T "DcConfirm") -f "11,51 GB") + (T "DcRecycleConfirm")) -Kind "warn" -Ok (T "DcConfirmOk") -Cancel (T "DlgCancel") -Danger
-                     $script:SnapDlg.Show() }
-                26 { $root = $script:SnapDlg.Content
-                     $rtb = New-Object Windows.Media.Imaging.RenderTargetBitmap([int]$root.ActualWidth, [int]$root.ActualHeight, 96, 96, [Windows.Media.PixelFormats]::Pbgra32)
-                     $rtb.Render($root); $enc = New-Object Windows.Media.Imaging.PngBitmapEncoder
-                     $enc.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($rtb))
-                     $fs = [IO.File]::Create((Join-Path $Snapshot "8-Dialog.png")); $enc.Save($fs); $fs.Close()
-                     $script:SnapDlg.Close(); $window.Close() }
-            }
+            $list = @(if ($env:WO_SNAP_PAGES) { $env:WO_SNAP_PAGES -split "," } else { $PageOrder })
+            $per = if ($env:WO_SNAP_WAIT) { [int]$env:WO_SNAP_WAIT } else { 6 }
+            $i = [int][Math]::Floor(($script:SnapStep - 1) / $per); $k = ($script:SnapStep - 1) % $per
+            if ($i -lt $list.Count) {
+                $pg = $list[$i]
+                if ($k -eq 0) { Show-Page $pg }
+                if ($k -eq ($per - 1)) { & $snap ("{0:D2}-{1}" -f ($i + 1), $pg) }
+            } else { $window.Close() }
         })
         $snapTimer.Start()
     }
 
-    [void]$window.ShowDialog()
+    $window.Add_Closed({ [Windows.Threading.Dispatcher]::CurrentDispatcher.BeginInvokeShutdown("Background") })
+    if ($Tray -and $script:TrayIcon) {
+        # Gizli baslangic: ContentRendered tetiklenmez, zamanlayicilari burada baslat
+        $script:TimersStarted = $true
+        On-Tick; $timer.Start(); $fast.Start(); Check-Update
+    } else {
+        $window.Show()
+    }
+    [Windows.Threading.Dispatcher]::Run()
     $script:Pool.Close()
 }
 catch {

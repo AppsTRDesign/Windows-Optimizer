@@ -10,10 +10,11 @@ $baseUrl    = "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/
 $stage      = Join-Path $env:TEMP "WO-install-$([guid]::NewGuid().ToString('N').Substring(0,8))"
 $obsolete   = @("modules/AdsBlocker.ps1", "modules/FeatureManager.ps1", "modules/BackgroundManager.ps1")
 $files      = @(
-    "WindowsOptimizer.ps1", "config.json", "version.json",
-    "assets/logo.png", "assets/banner.png",
-    "modules/Tweaks.ps1", "modules/RamCleaner.ps1", "modules/Updater.ps1",
-    "modules/Startup.ps1", "modules/DiskCleaner.ps1", "modules/Services.ps1"
+    "WindowsOptimizer.ps1", "config.json", "version.json", "assets/logo.png",
+    "assets/banner.png", "modules/Tweaks.ps1", "modules/RamCleaner.ps1", "modules/Updater.ps1",
+    "modules/Startup.ps1", "modules/DiskCleaner.ps1", "modules/Services.ps1", "modules/Network.ps1",
+    "pages/Game.ps1", "pages/Analyzer.ps1", "pages/Apps.ps1", "pages/Network.ps1",
+    "pages/Health.ps1", "pages/Privacy.ps1", "pages/Extras.ps1"
 )
 
 Write-Host ""

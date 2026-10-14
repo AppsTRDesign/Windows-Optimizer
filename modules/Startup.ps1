@@ -117,7 +117,35 @@ function Get-WoStartupItems {
     return $items
 }
 
-function Set-WoStartupItem($Item, [bool]$Enabled) {
+$WoStartupBackupPath = Join-Path (Split-Path $PSScriptRoot -Parent) "startup-backup.json"
+
+function Get-WoStartupBackup {
+    if (Test-Path $WoStartupBackupPath) { try { return (Get-Content $WoStartupBackupPath -Raw -Encoding UTF8 | ConvertFrom-Json) } catch {} }
+    return [pscustomobject]@{}
+}
+
+function Restore-WoStartupBackup {
+    $b = Get-WoStartupBackup
+    foreach ($p in @($b.PSObject.Properties)) {
+        $it = $p.Value
+        try {
+            Set-WoStartupItem $it ([bool]$it.Enabled) -NoBackup
+            [pscustomobject]@{ Name = $it.Name; Ok = $true }
+        } catch { [pscustomobject]@{ Name = $it.Name; Ok = $false; Err = $_.Exception.Message } }
+    }
+    if (Test-Path $WoStartupBackupPath) { Remove-Item $WoStartupBackupPath -Force }
+}
+
+function Set-WoStartupItem($Item, [bool]$Enabled, [switch]$NoBackup) {
+    if (-not $NoBackup) {
+        $b = Get-WoStartupBackup
+        if (-not $b.PSObject.Properties[$Item.Id]) {
+            $b | Add-Member -NotePropertyName $Item.Id -NotePropertyValue ([pscustomobject]@{
+                Id = $Item.Id; Name = $Item.Name; Source = $Item.Source; Hive = $Item.Hive; Sub = $Item.Sub
+                ApprovedName = $Item.ApprovedName; TaskPath = $Item.TaskPath; Enabled = [bool]$Item.Enabled })
+            $b | ConvertTo-Json -Depth 4 | Set-Content $WoStartupBackupPath -Encoding UTF8
+        }
+    }
     if ($Item.Source -eq "Task") {
         if ($Enabled) { Enable-ScheduledTask -TaskPath $Item.TaskPath -TaskName $Item.ApprovedName -ErrorAction Stop | Out-Null }
         else { Disable-ScheduledTask -TaskPath $Item.TaskPath -TaskName $Item.ApprovedName -ErrorAction Stop | Out-Null }

@@ -6,19 +6,26 @@
 
 A modular, open-source performance & privacy tool for Windows 10/11. It disables ads and telemetry, trims background activity and cleans RAM, with a live memory graph so you can **see** the effect of every optimization.
 
-> **Version 2.2** — services analysis, startup manager, disk cleaner, 43 optimizations including privacy permissions and gaming performance, live RAM monitoring and a safe in-app updater with a progress bar.
+> **Version 3.0** — Game Mode, app remover, network tools, system health, disk analyzer, privacy report, Windows Update control, profiles, system tray and scheduled maintenance. Plus one-click recommended settings and reset to original, services analysis, startup manager, disk cleaner, 49 optimizations including privacy permissions and gaming performance, live RAM monitoring and a safe in-app updater with a progress bar.
 
 ## ✨ Features
 
 | Page | What it does |
 |------|--------------|
 | 🏠 **Overview** | Live CPU / RAM / disk usage with sparklines, system info, optimization score and quick actions |
-| ⚡ **Optimizations** | 43 tweaks in 6 categories. Each setting's **current state is read from the system**; turning it off restores the Windows default |
+| ⚡ **Optimizations** | 49 tweaks in 7 categories (including Windows Update control). Each setting's **current state is read from the system**; turning it off restores the Windows default |
 | 🧠 **Memory (RAM)** | Live 2-minute stacked graph (in use / modified / standby), one-click cleaning, before/after results, top memory consumers, auto-clean by usage threshold |
+| 🎮 **Game Mode** | One click: RAM cleanup, temporary Ultimate Performance plan, silenced notifications and closing selected background apps; everything is restored afterwards |
 | 🚀 **Startup** | Every program that runs at boot (registry, Startup folder, scheduled tasks) with icon, publisher and command line; toggle with one click. Compatible with Task Manager |
 | 🔧 **Services** | Scans all Windows services and separates Windows components, third-party and unnecessary ones. Explains every suggestion, applies the safe ones in one click, every change can be undone |
 | 🧹 **Disk Cleanup** | Capacity cards for all drives; scans temp files, Windows Update cache, browser caches, crash dumps, shader cache and Recycle Bin, shows sizes and cleans the selected ones |
-| ⚙️ **Settings** | Language (TR/EN), update check, shortcut repair, system restore point, log file |
+| 🗺️ **Disk Analyzer** | Treemap of folders by size (click to drill in) and the 50 largest files |
+| 📦 **Apps** | Remove unnecessary preinstalled apps (News, Clipchamp, Solitaire, Teams…); critical packages are never listed, removed apps can be reinstalled from the Store |
+| 🌐 **Network** | Adapter details, DNS speed test with real queries and one-click DNS switching (Cloudflare, Google, Quad9, AdGuard…), DNS flush / IP renew / network reset |
+| 🩺 **Health** | Disk SMART info (temperature, SSD wear, power-on hours), 30-day stability summary, SFC and DISM repair with live progress |
+| 🔍 **Privacy Report** | Which app accessed the camera, microphone, location and screen capture, and when; live indicator while in use |
+| ↩️ **Reset** | The original value of every setting is recorded before its first change; return to the original state or to Windows defaults in one click |
+| ⚙️ **Settings** | Profile export/import, system tray and start with Windows, weekly scheduled maintenance, language (TR/EN), update check, shortcut repair, system restore point, log file |
 
 ### Optimization categories
 
@@ -97,6 +104,11 @@ Windows-Optimizer/
     ├── Startup.ps1          # Startup apps manager
     ├── DiskCleaner.ps1      # Drive capacity + junk file cleanup
     ├── Services.ps1         # Background services analysis
+    └── Network.ps1          # Network adapters and DNS
+pages/                       # Self-contained pages (own UI + logic)
+    ├── Game.ps1, Analyzer.ps1, Apps.ps1, Network.ps1
+    ├── Health.ps1, Privacy.ps1
+    └── Extras.ps1           # Profiles, system tray, scheduled maintenance
     └── Updater.ps1          # Version check, download, shortcuts
 ```
 

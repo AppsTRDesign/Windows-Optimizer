@@ -4,10 +4,11 @@ $WoRepoRaw = "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/m
 
 # Uzak version.json 'files' listesi vermezse kullanilir
 $WoDefaultFiles = @(
-    "WindowsOptimizer.ps1", "config.json", "version.json",
-    "assets/logo.png", "assets/banner.png",
-    "modules/Tweaks.ps1", "modules/RamCleaner.ps1", "modules/Updater.ps1",
-    "modules/Startup.ps1", "modules/DiskCleaner.ps1", "modules/Services.ps1"
+    "WindowsOptimizer.ps1", "config.json", "version.json", "assets/logo.png",
+    "assets/banner.png", "modules/Tweaks.ps1", "modules/RamCleaner.ps1", "modules/Updater.ps1",
+    "modules/Startup.ps1", "modules/DiskCleaner.ps1", "modules/Services.ps1", "modules/Network.ps1",
+    "pages/Game.ps1", "pages/Analyzer.ps1", "pages/Apps.ps1", "pages/Network.ps1",
+    "pages/Health.ps1", "pages/Privacy.ps1", "pages/Extras.ps1"
 )
 # Eski surumlerden kalan, artik kullanilmayan dosyalar
 $WoObsoleteFiles = @("modules/AdsBlocker.ps1", "modules/FeatureManager.ps1", "modules/BackgroundManager.ps1")
