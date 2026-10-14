@@ -23,15 +23,15 @@ if (Test-Path $configPath) {
     $config = Get-Content $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
 } else {
     $config = [PSCustomObject]@{
-        author = "Anonim"; github = "#"; instagram = "#"; website = "#"; logo = "icon.png"
+        author = "Anonim"; github = "#"; instagram = "#"; website = "#"; logo = "assets/logo.png"
     }
 }
 
 # --- Modülleri yükle ---
-. "$PSScriptRoot\Modules\AdsBlocker.ps1"
-. "$PSScriptRoot\Modules\FeatureManager.ps1"
-. "$PSScriptRoot\Modules\RamCleaner.ps1"
-. "$PSScriptRoot\Modules\BackgroundManager.ps1"
+. "$PSScriptRoot\modules\AdsBlocker.ps1"
+. "$PSScriptRoot\modules\FeatureManager.ps1"
+. "$PSScriptRoot\modules\RamCleaner.ps1"
+. "$PSScriptRoot\modules\BackgroundManager.ps1"
 
 # --- Logo yolu ---
 $logoPath = Join-Path $PSScriptRoot $config.logo
