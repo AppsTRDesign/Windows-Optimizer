@@ -19,5 +19,14 @@ Windows 10/11 için modüler, açık kaynak optimizasyon aracı. Reklamları kap
 
 **PowerShell'i Yönetici olarak açın** ve şu komutu çalıştırın:
 
+# Kurulum
 ```powershell
 irm https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1 | iex
+```
+# Kaldırma
+```powershell
+Remove-Item "$env:USERPROFILE\Windows-Optimizer" -Recurse -Force -ErrorAction SilentlyContinue
+```
+```powershell
+Remove-Item "$env:USERPROFILE\Desktop\Windows Optimizer.lnk" -Force -ErrorAction SilentlyContinue
+```
