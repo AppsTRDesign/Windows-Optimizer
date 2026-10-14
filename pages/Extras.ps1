@@ -78,7 +78,7 @@ $setStack.Children.Insert(1, $extras)   # Dil kartindan hemen sonra
 $script:PageDefs["Extras"] = @{
     Name = "Extras"
     Loc = @("PrfT", "PrfD", "BtnPrfExport", "BtnPrfImport", "TrayT", "TrayD", "TrayChkClose", "TrayChkStart", "TrayChkNotify", "MntT", "MntD", "MntChk", "MntDay", "MntHour", "BtnMntRun")
-    OnLang = { Build-MntChoices; Update-MntText; Update-TrayMenu }
+    OnLang = { if ($script:ExtrasLazyDone) { Build-MntChoices }; Update-MntText; Update-TrayMenu }
 }
 
 # =============== 4) PROFIL ===============
@@ -185,8 +185,7 @@ function Import-WoProfile {
 
 # =============== 5) SISTEM TEPSISI ===============
 Add-Type -AssemblyName System.Windows.Forms
-if (-not ("WoMenuColors" -as [type])) {
-    Add-Type -ReferencedAssemblies System.Windows.Forms, System.Drawing -TypeDefinition @"
+Add-WoType "WoMenuColors" @"
 using System.Drawing;
 using System.Windows.Forms;
 public class WoMenuColors : ProfessionalColorTable {
@@ -201,8 +200,8 @@ public class WoMenuColors : ProfessionalColorTable {
     public override Color SeparatorDark { get { return Line; } }
     public override Color SeparatorLight { get { return Bg; } }
 }
-"@
-}
+"@ @("System.Windows.Forms", "System.Drawing")
+
 
 function Show-WoTrayTip([string]$Title, [string]$Text) {
     if ($script:TrayIcon -and $Settings["trayNotify"] -ne $false) { $script:TrayIcon.ShowBalloonTip(4000, $Title, $Text, [System.Windows.Forms.ToolTipIcon]::Info) }
@@ -286,8 +285,19 @@ if ($null -eq $Settings["trayClose"]) { $Settings["trayClose"] = $true }
 if ($null -eq $Settings["trayNotify"]) { $Settings["trayNotify"] = $true }
 (N "TrayChkClose").IsChecked = [bool]$Settings["trayClose"]
 (N "TrayChkNotify").IsChecked = [bool]$Settings["trayNotify"]
-(N "TrayChkStart").IsChecked = Test-WoTrayTask
-if (($Settings["trayClose"] -or $Tray) -and -not $Snapshot) { New-WoTrayIcon }
+# Zamanlanmis gorev sorgusu yavas (~0,5 sn): Ayarlar sayfasi ilk acildiginda yapilir
+$script:ExtrasLazyDone = $false
+function Initialize-ExtrasLazy {
+    if ($script:ExtrasLazyDone) { return }
+    $script:ExtrasLazyDone = $true
+    (N "TrayChkStart").IsChecked = Test-WoTrayTask
+    Build-MntChoices
+}
+$script:PageDefs["Settings"] = @{ Name = "Settings"; OnShow = { Initialize-ExtrasLazy } }
+# Tepsi simgesi pencere cizildikten sonra kurulur (acilisi geciktirmez)
+if (($Settings["trayClose"] -or $Tray) -and -not $Snapshot) {
+    if ($Tray) { New-WoTrayIcon } else { $window.Add_ContentRendered({ if (-not $script:TrayIcon) { New-WoTrayIcon } }) }
+}
 
 (N "TrayChkClose").Add_Click({
     $Settings["trayClose"] = [bool](N "TrayChkClose").IsChecked; Save-WoSettings
@@ -388,5 +398,4 @@ $mntTimer.Add_Tick({
 })
 $mntTimer.Start()
 
-Build-MntChoices
 Update-MntText

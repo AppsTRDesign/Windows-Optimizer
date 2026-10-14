@@ -2,11 +2,35 @@
 # Her servis siniflandirilir: rec (gereksiz olabilir) | third (ucuncu parti) | ms (Windows bileseni)
 # Degistirilen servislerin ilk baslangic tipi services-backup.json'a yazilir; "Geri al" ile dondurulur.
 
+# Derlenmis C# tiplerini onbellege alir: ilk acilista derlenip DLL olarak saklanir, sonraki acilislarda dogrudan yuklenir.
+if (-not (Get-Command Add-WoType -ErrorAction SilentlyContinue)) {
+    function Add-WoType([string]$Name, [string]$Code, [string[]]$Refs = @()) {
+        if ($Name -as [type]) { return }
+        try {
+            $dir = Join-Path $env:LOCALAPPDATA "WindowsOptimizer\typecache"
+            $sha = [Security.Cryptography.SHA256]::Create()
+            $key = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($Code + ($Refs -join ",") + $PSVersionTable.CLRVersion))).Replace("-", "").Substring(0, 16)
+            $dll = Join-Path $dir "$Name-$key.dll"
+            if (-not (Test-Path $dll)) {
+                New-Item -ItemType Directory -Path $dir -Force | Out-Null
+                Get-ChildItem $dir -Filter "$Name-*.dll" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+                $tmp = "$dll.$PID.tmp"
+                if ($Refs.Count) { Add-Type -TypeDefinition $Code -ReferencedAssemblies $Refs -OutputAssembly $tmp -OutputType Library }
+                else { Add-Type -TypeDefinition $Code -OutputAssembly $tmp -OutputType Library }
+                Move-Item $tmp $dll -Force
+            }
+            Add-Type -Path $dll
+        } catch {}
+        if (-not ($Name -as [type])) {
+            if ($Refs.Count) { Add-Type -TypeDefinition $Code -ReferencedAssemblies $Refs } else { Add-Type -TypeDefinition $Code }
+        }
+    }
+}
+
 $WoSvcBackupPath = Join-Path (Split-Path $PSScriptRoot -Parent) "services-backup.json"
 
 # Servisin yapilandirma izni var mi? (yalnizca acmayi dener, hicbir sey degistirmez)
-if (-not ("WoSvc" -as [type])) {
-    Add-Type -TypeDefinition @"
+Add-WoType "WoSvc" @"
 using System;
 using System.Runtime.InteropServices;
 public static class WoSvc {
@@ -25,7 +49,7 @@ public static class WoSvc {
     }
 }
 "@
-}
+
 
 # Kendini koruyan guvenlik yazilimlari: servis izni olsa bile surucu degisikligi engeller
 $WoProtectedVendors = 'Norton|Gen Digital|NortonLifeLock|Symantec|Avast|AVG|Kaspersky|ESET|Bitdefender|McAfee|Malwarebytes|Sophos|Trend Micro|Avira|Panda|F-Secure|Webroot|Comodo|Emsisoft|G DATA'

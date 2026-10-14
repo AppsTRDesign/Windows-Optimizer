@@ -6,15 +6,16 @@
 
 A modular, open-source performance & privacy tool for Windows 10/11. It disables ads and telemetry, trims background activity and cleans RAM, with a live memory graph so you can **see** the effect of every optimization.
 
-> **Version 3.0** — Game Mode, app remover, network tools, system health, disk analyzer, privacy report, Windows Update control, profiles, system tray and scheduled maintenance. Plus one-click recommended settings and reset to original, services analysis, startup manager, disk cleaner, 49 optimizations including privacy permissions and gaming performance, live RAM monitoring and a safe in-app updater with a progress bar.
+> **Version 3.2** — Smart Memory (smart standby cleaner, background app limiter with efficiency mode, memory leak detector, page file advisor, browser memory saver), signed & SHA-256 verified updates, a faster start with a themed loading screen, and privacy toggles that stay in sync with Windows Settings in real time. MIT licensed — contributions welcome.
 
 ## ✨ Features
 
 | Page | What it does |
 |------|--------------|
 | 🏠 **Overview** | Live CPU / RAM / disk usage with sparklines, system info, optimization score and quick actions |
-| ⚡ **Optimizations** | 49 tweaks in 7 categories (including Windows Update control). Each setting's **current state is read from the system**; turning it off restores the Windows default |
+| ⚡ **Optimizations** | 50 tweaks in 7 categories (including Windows Update control). Each setting's **current state is read from the system** and updates live when you change it in Windows Settings; turning it off restores the Windows default |
 | 🧠 **Memory (RAM)** | Live 2-minute stacked graph (in use / modified / standby), one-click cleaning, before/after results, top memory consumers, auto-clean by usage threshold |
+| 🧬 **Smart Memory** | Smart standby cleaner (only purges when free memory drops below a threshold, optionally only in games), background app limiter (low memory priority + efficiency mode, lifted instantly when the app comes to the foreground), memory leak detector with tray alert and restart button, page file advisor, browser memory saver |
 | 📈 **Performance** | Live CPU (per core), GPU, memory, disk throughput and network; one-click memory, temp files, DNS and power plan optimization |
 | 🎮 **Game Mode** | One click: RAM cleanup, temporary Ultimate Performance plan, silenced notifications and closing selected background apps; everything is restored afterwards |
 | 🚀 **Startup** | Every program that runs at boot (registry, Startup folder, scheduled tasks) with icon, publisher and command line; toggle with one click. Compatible with Task Manager |
@@ -75,6 +76,8 @@ When a new version is available, a card appears in the sidebar. Click **Update n
 2. the app closes, the new files are copied over the old ones,
 3. shortcuts are recreated and the app restarts automatically.
 
+Every release is **signed**: `version.json` lists the SHA-256 hash of every file and an RSA-3072 signature over that list. The app and `install.ps1` verify the signature with the public key embedded in them and reject any file whose hash doesn't match — a tampered or hijacked download is never installed.
+
 If anything fails, your current installation is left untouched. The update log is written to `%TEMP%\WindowsOptimizer-update.log`.
 
 ## 🗑️ Uninstall
@@ -108,9 +111,12 @@ Windows-Optimizer/
     └── Network.ps1          # Network adapters and DNS
 pages/                       # Self-contained pages (own UI + logic)
     ├── Game.ps1, Analyzer.ps1, Apps.ps1, Network.ps1
-    ├── Health.ps1, Privacy.ps1
+    ├── Health.ps1, Privacy.ps1, Monitor.ps1
+    ├── SmartMem.ps1         # Smart standby, background limiter, leak detector, page file advisor
     └── Extras.ps1           # Profiles, system tray, scheduled maintenance
-    └── Updater.ps1          # Version check, download, shortcuts
+tools/
+    ├── release.ps1          # Signs a release: SHA-256 per file + RSA signature -> version.json
+    └── public-key.xml       # Public key (the private key is never in the repo)
 ```
 
 ## ⚠️ Notes
@@ -119,6 +125,10 @@ pages/                       # Self-contained pages (own UI + logic)
 - Creating a **system restore point** (Overview → Quick Actions) before making changes is recommended.
 - Some settings take effect after restarting Explorer (the app offers this) or after signing out.
 - Logs: `%TEMP%\WindowsOptimizer.log`
+
+## 🤝 Contributing
+
+Windows Optimizer is open source under the [MIT License](LICENSE). Bug reports, translations and new modules are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for code rules and the release flow.
 
 ## 🔗 Links
 

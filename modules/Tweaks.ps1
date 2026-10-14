@@ -8,6 +8,7 @@ $CDM   = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager
 $ADV   = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
 $POL   = "HKLM:\SOFTWARE\Policies\Microsoft"
 $CAM   = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore"
+$CAMLM = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore"   # cihaz duzeyi (tum kullanicilar)
 $MMCSS = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"
 $WoPlanGuid = "57a1c0de-0000-4000-8000-0000000000aa"   # Uygulamanin olusturdugu Nihai Performans kopyasi
 
@@ -168,6 +169,14 @@ $TweakCatalog = @(
        Reg=@( @{P="$POL\Edge"; N="StartupBoostEnabled"; V=0; D=$null}
               @{P="$POL\Edge"; N="BackgroundModeEnabled"; V=0; D=$null} ) }
 
+    @{ Id="BrowserMemSaver"; Cat="perf"; Rec=$true
+       TR=@("Tarayıcı bellek tasarrufunu aç (Chrome, Edge, Brave)","Kullanılmayan sekmeler uyutulur; tarayıcıların RAM kullanımı belirgin düşer. Tarayıcıda 'kuruluşunuz tarafından yönetiliyor' notu görünür.")
+       EN=@("Enable browser memory saver (Chrome, Edge, Brave)","Inactive tabs are put to sleep; browser RAM usage drops noticeably. Browsers show a 'managed by your organization' note.")
+       Reg=@( @{P="HKLM:\SOFTWARE\Policies\Google\Chrome"; N="HighEfficiencyModeEnabled"; V=1; D=$null}
+              @{P="HKLM:\SOFTWARE\Policies\BraveSoftware\Brave"; N="HighEfficiencyModeEnabled"; V=1; D=$null}
+              @{P="$POL\Edge"; N="SleepingTabsEnabled"; V=1; D=$null}
+              @{P="$POL\Edge"; N="SleepingTabsTimeout"; V=900; D=$null} ) }
+
     @{ Id="StartupDelay"; Cat="perf"; Rec=$true
        TR=@("Başlangıç uygulaması gecikmesini kaldır","Oturum açıldıktan sonra başlangıç uygulamaları beklemeden açılır.")
        EN=@("Remove startup app delay","Startup apps launch immediately after sign-in.")
@@ -213,23 +222,25 @@ $TweakCatalog = @(
        Reg=@( @{P="$POL\Windows\DeliveryOptimization"; N="DODownloadMode"; V=0; D=$null} ) }
 
     # ---------------- GİZLİLİK İZİNLERİ ----------------
-    @{ Id="PermLocation"; Cat="perm"; Rec=$false
+    @{ Id="PermLocation"; Cat="perm"; Rec=$false; Any=$true
        TR=@("Konum erişimi","Uygulamaların ve Windows'un konumunuza erişimi. Kapatılırsa hava durumu, saat dilimi ve Cihazımı Bul etkilenir.")
        EN=@("Location access","Apps and Windows can access your location. If turned off, weather, time zone and Find My Device are affected.")
        Reg=@( @{P="$CAM\location"; N="Value"; V="Deny"; D="Allow"}
               @{P="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"; N="Value"; V="Deny"; D="Allow"} ) }
 
-    @{ Id="PermMic"; Cat="perm"; Rec=$false
+    @{ Id="PermMic"; Cat="perm"; Rec=$false; Any=$true
        TR=@("Mikrofon erişimi","Uygulamaların mikrofona erişimi. Kapatılırsa Discord, Teams ve oyun içi sesli sohbet çalışmaz.")
        EN=@("Microphone access","Apps can use the microphone. If turned off, Discord, Teams and in-game voice chat stop working.")
        Reg=@( @{P="$CAM\microphone"; N="Value"; V="Deny"; D="Allow"}
-              @{P="$CAM\microphone\NonPackaged"; N="Value"; V="Deny"; D="Allow"} ) }
+              @{P="$CAM\microphone\NonPackaged"; N="Value"; V="Deny"; D="Allow"}
+              @{P="$CAMLM\microphone"; N="Value"; V="Deny"; D="Allow"} ) }
 
-    @{ Id="PermCamera"; Cat="perm"; Rec=$false
+    @{ Id="PermCamera"; Cat="perm"; Rec=$false; Any=$true
        TR=@("Kamera erişimi","Uygulamaların kameraya erişimi. Kapatılırsa görüntülü görüşme uygulamaları çalışmaz.")
        EN=@("Camera access","Apps can use the camera. If turned off, video call apps stop working.")
        Reg=@( @{P="$CAM\webcam"; N="Value"; V="Deny"; D="Allow"}
-              @{P="$CAM\webcam\NonPackaged"; N="Value"; V="Deny"; D="Allow"} ) }
+              @{P="$CAM\webcam\NonPackaged"; N="Value"; V="Deny"; D="Allow"}
+              @{P="$CAMLM\webcam"; N="Value"; V="Deny"; D="Allow"} ) }
 
     @{ Id="PermData"; Cat="perm"; Rec=$true
        TR=@("Kişisel verilere uygulama erişimi","Uygulamaların kişiler, takvim, arama geçmişi, e-posta, mesajlar, görevler, hesap bilgisi ve radyolara (Bluetooth) erişimi.")
@@ -602,6 +613,10 @@ function Test-WoRegEqual($A, $B) {
 
 function Test-WoTweak($Tweak) {
     if ($Tweak.Test) { try { if (-not (& $Tweak.Test)) { return $false } } catch { return $false } }
+    if ($Tweak.Any) {
+        foreach ($r in $Tweak.Reg) { if (Test-WoRegEqual (Get-WoRegValue $r.P $r.N) $r.V) { return $true } }
+        return $false
+    }
     foreach ($r in $Tweak.Reg) {
         if (-not (Test-WoRegEqual (Get-WoRegValue $r.P $r.N) $r.V)) { return $false }
     }

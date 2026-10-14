@@ -2,8 +2,32 @@
 # Guvenlik: baglanti noktalarini (junction/symlink) asla izlemez; Temp klasorlerinde son 24 saatte
 # degisen dosyalara dokunmaz; kullanimdaki dosyalar atlanir.
 
-if (-not ("WoDisk" -as [type])) {
-    Add-Type -TypeDefinition @"
+# Derlenmis C# tiplerini onbellege alir: ilk acilista derlenip DLL olarak saklanir, sonraki acilislarda dogrudan yuklenir.
+if (-not (Get-Command Add-WoType -ErrorAction SilentlyContinue)) {
+    function Add-WoType([string]$Name, [string]$Code, [string[]]$Refs = @()) {
+        if ($Name -as [type]) { return }
+        try {
+            $dir = Join-Path $env:LOCALAPPDATA "WindowsOptimizer\typecache"
+            $sha = [Security.Cryptography.SHA256]::Create()
+            $key = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($Code + ($Refs -join ",") + $PSVersionTable.CLRVersion))).Replace("-", "").Substring(0, 16)
+            $dll = Join-Path $dir "$Name-$key.dll"
+            if (-not (Test-Path $dll)) {
+                New-Item -ItemType Directory -Path $dir -Force | Out-Null
+                Get-ChildItem $dir -Filter "$Name-*.dll" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+                $tmp = "$dll.$PID.tmp"
+                if ($Refs.Count) { Add-Type -TypeDefinition $Code -ReferencedAssemblies $Refs -OutputAssembly $tmp -OutputType Library }
+                else { Add-Type -TypeDefinition $Code -OutputAssembly $tmp -OutputType Library }
+                Move-Item $tmp $dll -Force
+            }
+            Add-Type -Path $dll
+        } catch {}
+        if (-not ($Name -as [type])) {
+            if ($Refs.Count) { Add-Type -TypeDefinition $Code -ReferencedAssemblies $Refs } else { Add-Type -TypeDefinition $Code }
+        }
+    }
+}
+
+Add-WoType "WoDisk" @"
 using System;
 using System.IO;
 
@@ -49,11 +73,10 @@ public static class WoDisk {
     }
 }
 "@
-}
+
 
 # Anlik algilama: kategori klasorlerini izler; olaylar C# icinde toplanir (PowerShell betigi baska is parcaciginda calistirilmaz)
-if (-not ("WoWatch" -as [type])) {
-    Add-Type -TypeDefinition @"
+Add-WoType "WoWatch" @"
 using System;
 using System.IO;
 using System.Collections.Generic;
@@ -80,7 +103,7 @@ public static class WoWatch {
     public static void Clear() { foreach (FileSystemWatcher w in ws) { try { w.EnableRaisingEvents = false; w.Dispose(); } catch { } } ws.Clear(); }
 }
 "@
-}
+
 
 $L = $env:LOCALAPPDATA
 $W = $env:SystemRoot

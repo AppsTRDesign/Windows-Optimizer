@@ -29,7 +29,102 @@ function Write-WoLog([string]$Msg) {
 }
 # Acilis olcumu (yalnizca WO_PROFILE ortam degiskeni varsa gunluge yazar)
 $script:BootClock = [Diagnostics.Stopwatch]::StartNew()
-function Mark-Boot([string]$Phase) { if ($env:WO_PROFILE) { Write-WoLog ("PROFILE {0,6} ms  {1}" -f $script:BootClock.ElapsedMilliseconds, $Phase) } }
+$script:BootStep = 0
+function Mark-Boot([string]$Phase) {
+    if ($env:WO_PROFILE) { Write-WoLog ("PROFILE {0,6} ms  {1}" -f $script:BootClock.ElapsedMilliseconds, $Phase) }
+    if ($script:Splash) {
+        $script:BootStep++
+        $tr = $script:SplashLang -eq "TR"
+        $msg = switch -Wildcard ($Phase) {
+            "moduller"   { if ($tr) { "Modüller yükleniyor…" } else { "Loading modules…" } }
+            "*xaml"      { if ($tr) { "Arayüz hazırlanıyor…" } else { "Preparing interface…" } }
+            "sayfa*"     { if ($tr) { "Sayfalar yükleniyor…" } else { "Loading pages…" } }
+            "tweak*"     { if ($tr) { "Optimizasyon durumları okunuyor…" } else { "Reading optimization states…" } }
+            "ana sayfa"  { if ($tr) { "Neredeyse hazır…" } else { "Almost ready…" } }
+            default      { $null }
+        }
+        try {
+            $script:Splash.FindName("SpBar").Value = [Math]::Min(96, 100 * $script:BootStep / 18)
+            if ($msg) { $script:Splash.FindName("SpPhase").Text = $msg }
+            # Bekleyen cizimleri isle: acilis ekrani donmadan ilerler
+            [Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([Action]{}, [Windows.Threading.DispatcherPriority]::Background)
+        } catch {}
+    }
+}
+
+# ---------------- ACILIS EKRANI ----------------
+$script:Splash = $null
+if (-not $Snapshot -and -not $Tray -and -not $Maintenance) {
+    try {
+        Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
+        $script:SplashLang = "TR"
+        try { $sl = (Get-Content $SettingsPath -Raw -Encoding UTF8 | ConvertFrom-Json).language; if ($sl -in @("TR", "EN")) { $script:SplashLang = $sl } } catch {}
+        $splashXaml = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="440" Height="270" WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen" Topmost="True" ShowInTaskbar="True" Title="Windows Optimizer"
+        FontFamily="Segoe UI Variable Text, Segoe UI" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <Border Margin="16" CornerRadius="16" BorderBrush="#2E2E4A" BorderThickness="1">
+    <Border.Background>
+      <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#221A48" Offset="0"/><GradientStop Color="#0F0F1A" Offset="0.55"/><GradientStop Color="#0C0C14" Offset="1"/>
+      </LinearGradientBrush>
+    </Border.Background>
+    <Border.Effect><DropShadowEffect BlurRadius="26" ShadowDepth="0" Opacity="0.55" Color="Black"/></Border.Effect>
+    <Grid Margin="30,28,30,24">
+      <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <Border Width="64" Height="64" CornerRadius="16">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#7C5CFF" Offset="0"/><GradientStop Color="#A855F7" Offset="1"/></LinearGradientBrush>
+          </Border.Background>
+          <Image x:Name="SpLogo" Margin="8" Stretch="Uniform"/>
+        </Border>
+        <StackPanel Margin="18,0,0,0" VerticalAlignment="Center">
+          <TextBlock Text="Windows Optimizer" FontSize="22" FontWeight="SemiBold" Foreground="White"/>
+          <TextBlock x:Name="SpVer" FontSize="12" Foreground="#9C9CB8" Margin="0,3,0,0"/>
+        </StackPanel>
+      </StackPanel>
+      <StackPanel Grid.Row="1">
+        <Grid Margin="0,0,0,8">
+          <TextBlock x:Name="SpWait" FontSize="12.5" Foreground="#EDEDF5"/>
+          <TextBlock x:Name="SpPhase" FontSize="11.5" Foreground="#7A7A94" HorizontalAlignment="Right"/>
+        </Grid>
+        <ProgressBar x:Name="SpBar" Height="6" Maximum="100" Value="4" Background="#23233A" BorderThickness="0">
+          <ProgressBar.Template>
+            <ControlTemplate TargetType="ProgressBar">
+              <Grid>
+                <Border x:Name="PART_Track" CornerRadius="3" Background="{TemplateBinding Background}"/>
+                <Border x:Name="PART_Indicator" CornerRadius="3" HorizontalAlignment="Left">
+                  <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#7C5CFF" Offset="0"/><GradientStop Color="#A855F7" Offset="1"/></LinearGradientBrush>
+                  </Border.Background>
+                </Border>
+              </Grid>
+            </ControlTemplate>
+          </ProgressBar.Template>
+        </ProgressBar>
+      </StackPanel>
+    </Grid>
+  </Border>
+</Window>
+'@
+        $script:Splash = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader ([xml]$splashXaml)))
+        $script:Splash.FindName("SpWait").Text = if ($script:SplashLang -eq "TR") { "Açılıyor, lütfen bekleyin…" } else { "Starting, please wait…" }
+        try { $script:Splash.FindName("SpVer").Text = "v" + (Get-Content (Join-Path $AppDir "version.json") -Raw -Encoding UTF8 | ConvertFrom-Json).version } catch {}
+        $lp = Join-Path $AppDir "assets\logo.png"
+        if (Test-Path $lp) {
+            $bi = New-Object Windows.Media.Imaging.BitmapImage
+            $bi.BeginInit(); $bi.UriSource = New-Object Uri($lp); $bi.DecodePixelWidth = 96; $bi.CacheOption = "OnLoad"; $bi.EndInit()
+            $script:Splash.FindName("SpLogo").Source = $bi
+        }
+        $script:Splash.Show()
+        [Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([Action]{}, [Windows.Threading.DispatcherPriority]::Background)
+    } catch { $script:Splash = $null }
+}
+function Close-WoSplash {
+    if ($script:Splash) { try { $script:Splash.Close() } catch {}; $script:Splash = $null }
+}
 
 . (Join-Path $AppDir "modules\RamCleaner.ps1")
 . (Join-Path $AppDir "modules\Tweaks.ps1")
@@ -102,6 +197,8 @@ TR = @{
     UpdTitle = "Güncelleme mevcut"; BtnUpdate = "Şimdi güncelle"; UpdRetry = "Tekrar dene"; UpdVer = "v{0}  →  v{1}"
     Upd_start = "Hazırlanıyor…"; Upd_download = "İndiriliyor {0}/{1}"; Upd_verify = "Dosyalar doğrulanıyor…"
     Upd_ready = "Kuruluyor, yeniden başlatılıyor…"; Upd_error = "Hata: {0}"
+    UpdSigTitle = "Güncelleme doğrulanamadı"; UpdSigMsg = "Bu güncellemenin dijital imzası geçersiz veya eksik. Güvenliğiniz için kurulmadı. Geliştirici yeni bir imzalı sürüm yayınladığında tekrar deneyin."
+    UpdVerified = "İmzalı ve doğrulanmış sürüm"
     UpdChecking = "Güncellemeler denetleniyor…"; UpdLatest = "En güncel sürümü kullanıyorsunuz (v{0})"
     UpdAvailable = "Yeni sürüm mevcut: v{0} — sol menüden güncelleyebilirsiniz"; UpdFail = "Güncelleme sunucusuna ulaşılamadı"
     Updated = "Güncelleme tamamlandı — v{0} kullanıyorsunuz"
@@ -228,6 +325,8 @@ EN = @{
     UpdTitle = "Update available"; BtnUpdate = "Update now"; UpdRetry = "Try again"; UpdVer = "v{0}  →  v{1}"
     Upd_start = "Preparing…"; Upd_download = "Downloading {0}/{1}"; Upd_verify = "Verifying files…"
     Upd_ready = "Installing, restarting…"; Upd_error = "Error: {0}"
+    UpdSigTitle = "Update could not be verified"; UpdSigMsg = "This update's digital signature is invalid or missing. It was not installed for your safety. Try again when the developer publishes a new signed release."
+    UpdVerified = "Signed and verified release"
     UpdChecking = "Checking for updates…"; UpdLatest = "You are on the latest version (v{0})"
     UpdAvailable = "New version available: v{0} — update from the sidebar"; UpdFail = "Could not reach the update server"
     Updated = "Update complete — you are on v{0}"
@@ -1467,7 +1566,7 @@ try {
     $NavIcons = @{ Home = 0xE80F; Tweaks = 0xE945; Memory = 0xE9D9; Startup = 0xE7E8; Services = 0xE90F; Disk = 0xEDA2; Settings = 0xE713 }
     $NavGroups = [ordered]@{
         main   = @("Home", "Tweaks")
-        perf   = @("Monitor", "Memory", "Game", "Startup", "Services")
+        perf   = @("Monitor", "Memory", "SmartMem", "Game", "Startup", "Services")
         clean  = @("Disk", "Analyzer", "Apps")
         system = @("Network", "Health", "Privacy", "Settings")
     }
@@ -1515,6 +1614,7 @@ try {
         (N "PageTitle").Text = T "Title_$Name"
         (N "PageSub").Text   = T "Sub_$Name"
         $nb = N "Nav$Name"; if ($nb) { $nb.IsChecked = $true }
+        if ($Name -in @("Tweaks", "Home") -and -not $script:Booting -and (Get-Command Refresh-TweaksLive -ErrorAction SilentlyContinue)) { Refresh-TweaksLive }
         $def = $script:PageDefs[$Name]
         if ($def -and $def.OnShow) { try { & $def.OnShow } catch { Write-WoLog "Sayfa ($Name): $_" } }
         if ($Name -eq "Memory") { $window.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background, [Action]{ Draw-MemChart; Refresh-ProcList }) | Out-Null }
@@ -1737,6 +1837,76 @@ try {
     }
 
     (N "BtnApplyTweaks").Add_Click({ Invoke-TweakChanges })
+
+    # ---------- Windows Ayarlari ile anlik senkron ----------
+    # Kayit defteri degisiklik bildirimi (RegNotifyChangeKeyValue): Ayarlar'da bir anahtar degisince surum sayaci artar.
+    Add-WoType "WoRegWatch" @"
+using System;
+using System.Threading;
+using System.Runtime.InteropServices;
+using Microsoft.Win32;
+public static class WoRegWatch {
+    [DllImport("advapi32.dll")] static extern int RegNotifyChangeKeyValue(IntPtr hKey, bool subtree, uint filter, IntPtr hEvent, bool async);
+    static int ver;
+    public static int Version { get { return Thread.VolatileRead(ref ver); } }
+    public static void Watch(bool machine, string path) {
+        Thread t = new Thread(delegate () {
+            try {
+                using (RegistryKey root = RegistryKey.OpenBaseKey(machine ? RegistryHive.LocalMachine : RegistryHive.CurrentUser, RegistryView.Registry64))
+                using (RegistryKey k = root.OpenSubKey(path, false)) {
+                    if (k == null) return;
+                    using (AutoResetEvent ev = new AutoResetEvent(false)) {
+                        while (true) {
+                            if (RegNotifyChangeKeyValue(k.Handle.DangerousGetHandle(), true, 0x1 | 0x4, ev.SafeWaitHandle.DangerousGetHandle(), true) != 0) return;
+                            ev.WaitOne();
+                            Interlocked.Increment(ref ver);
+                        }
+                    }
+                }
+            } catch { }
+        });
+        t.IsBackground = true; t.Start();
+    }
+}
+"@
+    foreach ($w in @(
+        @($false, "SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore"),
+        @($true,  "SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore"),
+        @($true,  "SOFTWARE\Policies"), @($false, "SOFTWARE\Policies"),
+        @($false, "SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"),
+        @($false, "SOFTWARE\Microsoft\Windows\CurrentVersion\Search"),
+        @($false, "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced"),
+        @($false, "SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy"),
+        @($false, "SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo"),
+        @($false, "System\GameConfigStore"), @($false, "Control Panel\Mouse"))) {
+        [WoRegWatch]::Watch($w[0], $w[1])
+    }
+
+    # Durumlari yeniden oku; kullanicinin henuz uygulamadigi secimlere dokunma
+    function Refresh-TweaksLive {
+        if ($script:Applying -or $script:GlobalBusy) { return }
+        $old = @{} + $script:TweakState
+        Refresh-TweakStates
+        foreach ($t in $TweakCatalog) {
+            if (-not $script:TweakRows[$t.Id]) { continue }
+            if ((Get-WantApplied $t) -eq [bool]$old[$t.Id]) { Set-WantApplied $t $script:TweakState[$t.Id] }
+        }
+        Update-TweakSummary
+    }
+    $script:RegSeen = [WoRegWatch]::Version; $script:RegLastSync = Get-Date
+    $regSync = New-Object Windows.Threading.DispatcherTimer
+    $regSync.Interval = [TimeSpan]::FromMilliseconds(700)
+    $regSync.Add_Tick({
+        $v = [WoRegWatch]::Version
+        if ($v -eq $script:RegSeen -or -not $window.IsVisible) { return }
+        if (((Get-Date) - $script:RegLastSync).TotalMilliseconds -lt 1500) { return }   # art arda yazmalari birlestir
+        $script:RegSeen = $v; $script:RegLastSync = Get-Date
+        try {
+            Refresh-TweaksLive
+            if ($script:Page -eq "Privacy" -and (Get-Command Load-Privacy -ErrorAction SilentlyContinue)) { Load-Privacy }
+        } catch { Write-WoLog "Canli senkron: $_" }
+    })
+    $regSync.Start()
     (N "BtnSelRec").Add_Click({ Select-Recommended })
     (N "BtnSelReset").Add_Click({
         Sync-TweakSwitches
@@ -2304,7 +2474,7 @@ try {
         $r = $script:Remote
         (N "UpdateCard").Visibility = "Visible"
         (N "UpdVersion").Text = (T "UpdVer") -f $LocalVersion, $r.version
-        (N "UpdNotes").Text = "$($r.notes)"
+        (N "UpdNotes").Text = $(if (-not (Test-WoManifest $r)) { "✓ " + (T "UpdVerified") + " · " } else { "" }) + "$($r.notes)"
         (N "UpdNotes").Visibility = if ($r.notes) { "Visible" } else { "Collapsed" }
         (N "UpdNotes").ToolTip = "$($r.notes)"
     }
@@ -2327,7 +2497,11 @@ try {
                 if ($script:UpdManual) { (N "SetUpdStatus").Text = T "UpdFail" }
                 return
             }
-            if (Test-WoNewer $r.version $LocalVersion) {
+            if ((Test-WoNewer $r.version $LocalVersion) -and (Test-WoManifest $r)) {
+                # Yeni surum var ama imzasi gecersiz/eksik: kart gosterilmez, yalnizca bilgi verilir
+                Write-WoLog "Imzasiz/gecersiz guncelleme yok sayildi: v$($r.version) ($(Test-WoManifest $r))"
+                (N "SetUpdStatus").Text = T "UpdSigTitle"
+            } elseif (Test-WoNewer $r.version $LocalVersion) {
                 $script:Remote = $r
                 Show-UpdateCard
                 (N "SetUpdStatus").Text = (T "UpdAvailable") -f $r.version
@@ -2340,8 +2514,13 @@ try {
 
     function Start-Update {
         if (-not $script:Remote -or $script:UpdSync) { return }
-        $files = @($script:Remote.files | Where-Object { $_ })
-        if ($files.Count -eq 0) { $files = $WoDefaultFiles }
+        $bad = Test-WoManifest $script:Remote
+        if ($bad) {
+            Write-WoLog "Guncelleme reddedildi ($bad): v$($script:Remote.version)"
+            [void](Show-WoDialog -Title (T "UpdSigTitle") -Message (T "UpdSigMsg") -Kind "error"); return
+        }
+        $files = Get-WoSignedFiles $script:Remote
+        $expected = @{}; foreach ($p in $script:Remote.sha256.PSObject.Properties) { $expected[$p.Name] = "$($p.Value)" }
         $stage = Join-Path $env:TEMP ("WO-update-" + $script:Remote.version)
         $script:UpdSync = [hashtable]::Synchronized(@{ Stage = "start"; Pct = 0; Index = 0; Count = $files.Count; File = ""; Error = $null })
         $script:UpdStagePath = $stage
@@ -2349,7 +2528,7 @@ try {
         (N "BtnUpdate").IsEnabled = $false
         (N "UpdNotes").Visibility = "Collapsed"
         Write-WoLog "Guncelleme basladi: v$LocalVersion -> v$($script:Remote.version)"
-        Start-Bg -Work $WoDownloadJob -ArgList @($WoRepoRaw, $files, $stage, $script:UpdSync) -Done {
+        Start-Bg -Work $WoDownloadJob -ArgList @($WoRepoRaw, $files, $stage, $script:UpdSync, $expected) -Done {
             param($out, $err)
             $sync = $script:UpdSync
             if ($err -and $sync.Stage -ne "error") { $sync.Error = $err; $sync.Stage = "error" }
@@ -2992,7 +3171,7 @@ try {
     (N "BtnCleanMgr").Add_Click({ Start-Process cleanmgr.exe })
 
     # ================= EK SAYFALAR (pages\*.ps1) =================
-    foreach ($pf in @("Health", "Monitor", "Game", "Analyzer", "Apps", "Network", "Privacy", "Extras")) {
+    foreach ($pf in @("Health", "Monitor", "SmartMem", "Game", "Analyzer", "Apps", "Network", "Privacy", "Extras")) {
         $pp = Join-Path $AppDir "pages\$pf.ps1"
         if (Test-Path $pp) { try { . $pp } catch { Write-WoLog "Sayfa yuklenemedi ($pf): $_" } }
         Mark-Boot "sayfa $pf"
@@ -3025,7 +3204,7 @@ try {
                 if (-not $ctrl) { continue }
                 if ($ctrl -is [Windows.Controls.TextBlock]) { $ctrl.Text = T $n } else { $ctrl.Content = T $n }
             }
-            if ($d.OnLang) { try { & $d.OnLang } catch { Write-WoLog "Dil ($($d.Name)): $_" } }
+            if ($d.OnLang -and -not $script:Booting) { try { & $d.OnLang } catch { Write-WoLog "Dil ($($d.Name)): $_" } }
         }
         (N "Auto0").Content = T "AutoOff"
         (N "BtnLang").Content = if ($script:Lang -eq "TR") { "EN" } else { "TR" }
@@ -3037,13 +3216,13 @@ try {
         (N "PageSub").Text = T "Sub_$($script:Page)"
         if ($script:UpdSync) { Update-UpdProgress } elseif (-not (N "BtnUpdate").IsEnabled) { } else { (N "BtnUpdate").Content = T "BtnUpdate" }
         if ($script:Remote) { Show-UpdateCard }
-        (N "CpuSub").Text = (T "CpuSub") -f [Environment]::ProcessorCount, [Diagnostics.Process]::GetProcesses().Length
+        if (-not $script:Booting) { (N "CpuSub").Text = (T "CpuSub") -f [Environment]::ProcessorCount, [Diagnostics.Process]::GetProcesses().Length }
         if ($script:TweakRows.Count -gt 0) { Build-TweakList }
         Update-RestartBar
         if ($script:StartupLoaded) { Build-StartupList } else { (N "SuSummary").Text = T "SuLoading" }
         if ($script:SvcLoaded) { Build-ServiceList } else { (N "SvSummary").Text = T "SvLoading" }
         if ($script:Page -eq "Disk") { Show-Drives }
-        Build-CleanList
+        if (-not $script:Booting) { Build-CleanList }
         (N "Lang$($script:Lang)").IsChecked = $true
     }
     function Set-Language([string]$L) {
@@ -3058,6 +3237,7 @@ try {
 
     # ================= BAŞLAT =================
     Mark-Boot "olaylar"
+    $script:Booting = $true
     Refresh-TweakStates
     Mark-Boot "tweak durumlari"
     Apply-Language
@@ -3065,6 +3245,7 @@ try {
     Build-TweakList
     Mark-Boot "tweak listesi"
     Show-Page "Home"
+    $script:Booting = $false
     Mark-Boot "ana sayfa"
     Set-Status (T "StatusReady") "info"
     if ($Updated) { Set-Status ((T "Updated") -f $LocalVersion) "ok" }
@@ -3088,6 +3269,8 @@ try {
 
     $window.Add_ContentRendered({
         Mark-Boot "pencere cizildi"
+        Close-WoSplash
+        $window.Activate() | Out-Null
         if ($script:TimersStarted) { return }
         $script:TimersStarted = $true
         On-Tick
@@ -3141,6 +3324,7 @@ try {
     $script:Pool.Close()
 }
 catch {
+    Close-WoSplash
     $err = "HATA: $($_.Exception.Message)`r`nSATIR: $($_.InvocationInfo.ScriptLineNumber)`r`n$($_.ScriptStackTrace)"
     Write-WoLog $err
     try { [void](Show-WoDialog -Title "Windows Optimizer - Hata" -Message $err -Kind "error") }

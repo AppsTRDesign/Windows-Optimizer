@@ -104,30 +104,44 @@ Register-WoPage @{
   </StackPanel>
 </ScrollViewer>
 '@
-    OnShow = { Start-MnLoop; Build-MnStatic }
+    OnShow = { if (-not $script:MnInfoLoaded) { Load-MnInfo }; Start-MnLoop; Build-MnStatic }
     OnLang = { if ($script:MnBuilt) { $script:MnBuilt = $false; Build-MnStatic } }
 }
 
-# ---------------- statik bilgiler ----------------
-$script:MnInfo = $null
-try {
-    $cpu0 = Get-CimInstance Win32_Processor -ErrorAction Stop | Select-Object -First 1
-    $vram = 0; $gpuName = ""
-    foreach ($k in Get-ChildItem "HKLM:\SYSTEM\ControlSet001\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}" -ErrorAction SilentlyContinue) {
-        $p = Get-ItemProperty $k.PSPath -ErrorAction SilentlyContinue
-        if ($p.DriverDesc -and $p."HardwareInformation.qwMemorySize" -gt $vram) { $vram = [double]$p."HardwareInformation.qwMemorySize"; $gpuName = $p.DriverDesc }
+# ---------------- statik bilgiler (sayfa ilk acildiginda arka planda okunur; acilisi yavaslatmaz) ----------------
+$script:MnInfo = @{ CpuName = ""; Cores = 0; Threads = [Environment]::ProcessorCount; GpuName = ""; Vram = 0; RamMhz = 0; RamDesc = ""; Fans = 0; Nvidia = $false; DiskNames = @{} }
+$script:MnInfoLoaded = $false
+function Load-MnInfo {
+    if ($script:MnInfoLoading) { return }
+    $script:MnInfoLoading = $true
+    Start-Bg -Work {
+        $cpu0 = Get-CimInstance Win32_Processor | Select-Object -First 1
+        $vram = 0; $gpuName = ""
+        foreach ($k in Get-ChildItem "HKLM:\SYSTEM\ControlSet001\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}" -ErrorAction SilentlyContinue) {
+            $p = Get-ItemProperty $k.PSPath -ErrorAction SilentlyContinue
+            if ($p.DriverDesc -and $p."HardwareInformation.qwMemorySize" -gt $vram) { $vram = [double]$p."HardwareInformation.qwMemorySize"; $gpuName = $p.DriverDesc }
+        }
+        $mods = @(Get-CimInstance Win32_PhysicalMemory -ErrorAction SilentlyContinue)
+        $names = @{}; foreach ($pd in @(Get-PhysicalDisk -ErrorAction SilentlyContinue)) { $names["$($pd.DeviceId)"] = "$($pd.FriendlyName)".Trim() }
+        @{
+            CpuName = "$($cpu0.Name)".Trim(); Cores = $cpu0.NumberOfCores; Threads = $cpu0.NumberOfLogicalProcessors
+            GpuName = $gpuName; Vram = $vram; RamMhz = ($mods | Measure-Object ConfiguredClockSpeed -Maximum).Maximum
+            RamCount = $mods.Count; RamCap = $(if ($mods.Count) { [double]$mods[0].Capacity } else { 0 }); RamMaker = $(if ($mods.Count) { "$($mods[0].Manufacturer)".Trim() } else { "" })
+            Fans = @(Get-CimInstance Win32_Fan -ErrorAction SilentlyContinue).Count
+            Nvidia = [bool](Get-Command nvidia-smi.exe -ErrorAction SilentlyContinue)
+            DiskNames = $names
+        }
+    } -Done {
+        param($out, $err)
+        $i0 = @($out) | Select-Object -Last 1
+        if ($i0 -is [hashtable]) {
+            $i0.RamDesc = "$($i0.RamCount) × $(Fmt-GB $i0.RamCap) · $($i0.RamMaker)"
+            $script:MnInfo = $i0; $script:MnInfoLoaded = $true
+            $MnSync.Nvidia = $i0.Nvidia
+            $script:MnBuilt = $false; if ($script:Page -eq "Monitor") { Build-MnStatic }
+        }
     }
-    $mods = @(Get-CimInstance Win32_PhysicalMemory -ErrorAction SilentlyContinue)
-    $script:MnInfo = @{
-        CpuName = "$($cpu0.Name)".Trim(); Cores = $cpu0.NumberOfCores; Threads = $cpu0.NumberOfLogicalProcessors
-        GpuName = $gpuName; Vram = $vram; RamMhz = ($mods | Measure-Object ConfiguredClockSpeed -Maximum).Maximum
-        RamDesc = "$($mods.Count) × $(Fmt-GB ($mods[0].Capacity)) · $("$($mods[0].Manufacturer)".Trim())"
-        Fans = @(Get-CimInstance Win32_Fan -ErrorAction SilentlyContinue).Count
-        Nvidia = [bool](Get-Command nvidia-smi.exe -ErrorAction SilentlyContinue)
-        DiskNames = @{}
-    }
-    foreach ($pd in @(Get-PhysicalDisk -ErrorAction SilentlyContinue)) { $script:MnInfo.DiskNames["$($pd.DeviceId)"] = "$($pd.FriendlyName)".Trim() }
-} catch { Write-WoLog "Performans bilgisi: $_" }
+}
 
 # ---------------- arka plan olcum dongusu ----------------
 $MnSync = [hashtable]::Synchronized(@{ Stop = $false; Active = $false; Running = $false; Stamp = $null })
@@ -138,7 +152,7 @@ function Start-MnLoop {
     if ($MnSync.Running) { return }
     $MnSync.Running = $true
     Start-Bg -Work {
-        param($S, $Nvidia)
+        param($S)
         $n = 0
         while (-not $S.Stop) {
             if (-not $S.Active) { Start-Sleep -Milliseconds 1000; continue }
@@ -157,7 +171,7 @@ function Start-MnLoop {
                 $S.GpuMem = [double]((Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory -Property DedicatedUsage -ErrorAction SilentlyContinue | Measure-Object DedicatedUsage -Maximum).Maximum)
                 $tz = @(Get-CimInstance Win32_PerfFormattedData_Counters_ThermalZoneInformation -Property HighPrecisionTemperature -ErrorAction SilentlyContinue)
                 $S.Acpi = if ($tz.Count) { (($tz | Measure-Object HighPrecisionTemperature -Maximum).Maximum / 10) - 273.15 } else { $null }
-                if ($Nvidia -and $n % 2 -eq 0) {
+                if ($S.Nvidia -and $n % 2 -eq 0) {
                     $q = & nvidia-smi.exe --query-gpu=temperature.gpu,fan.speed,power.draw --format=csv,noheader,nounits 2>$null | Select-Object -First 1
                     if ($q) { $v = $q -split ',\s*'; $S.GpuTemp = [double]$v[0]; $S.GpuFan = $v[1]; $S.GpuPower = $v[2] }
                 }
@@ -176,7 +190,7 @@ function Start-MnLoop {
             Start-Sleep -Milliseconds 1500
         }
         $S.Running = $false
-    } -ArgList @($MnSync, [bool]$script:MnInfo.Nvidia)
+    } -ArgList @(, $MnSync)
 }
 $window.Add_Closed({ $MnSync.Stop = $true })
 

@@ -1,8 +1,7 @@
 ﻿# pages/Health.ps1 - Sistem sagligi: disk SMART bilgileri (canli), kararlilik ozeti, DISM/SFC onarimi (canli ilerleme)
 
 # NVMe saglik gunlugu: Windows'un guvenilirlik sayaci NVMe'de calisma suresi/hata vermeyebilir; dogrudan diskten okunur.
-if (-not ("WoNvme" -as [type])) {
-    Add-Type -TypeDefinition @"
+Add-WoType "WoNvme" @"
 using System;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
@@ -40,7 +39,7 @@ public static class WoNvme {
     }
 }
 "@
-}
+
 
 Add-WoStrings @{
     NavHealth = "Sağlık"; Title_Health = "Sistem Sağlığı"; Sub_Health = "Disk sağlığı, kararlılık ve sistem dosyası onarımı"

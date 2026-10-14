@@ -8,8 +8,35 @@ $WoDefaultFiles = @(
     "assets/banner.png", "modules/Tweaks.ps1", "modules/RamCleaner.ps1", "modules/Updater.ps1",
     "modules/Startup.ps1", "modules/DiskCleaner.ps1", "modules/Services.ps1", "modules/Network.ps1",
     "pages/Game.ps1", "pages/Analyzer.ps1", "pages/Apps.ps1", "pages/Network.ps1",
-    "pages/Health.ps1", "pages/Privacy.ps1", "pages/Extras.ps1", "pages/Monitor.ps1"
+    "pages/Health.ps1", "pages/Privacy.ps1", "pages/Extras.ps1", "pages/Monitor.ps1", "pages/SmartMem.ps1"
 )
+# ---------------- IMZALI GUNCELLEME ----------------
+# version.json icindeki dosya ozetleri (sha256) proje sahibinin ozel anahtariyla imzalanir (tools\release.ps1).
+# Istemci yalnizca bu gomulu acik anahtarla dogrulanan surumleri kurar; tek bayt degisen dosya reddedilir.
+$WoUpdatePublicKey = '<RSAKeyValue><Modulus>tjUSopN6XtXRGRi4sl28MUdMCxD8nIPqQrcpfdaNGEYR5I5Ji5+aJq92xc2wCG6bTtc/WKPfld8LwzoN6mix2Lx7gDqrtkh2ee2LrDwggBO/vT5Qo++tcrle/uHBaaffQZqkn8hkJY6rPcZ3uTMYA8/21EcEgF20kjtrmcPxJW1//gz1nLPQQnf9yx02/ZTCDRBh96Urhh9Nj/KaJ9tYnp99BTllWITJ0R8/8C+CNQVVYsNs4gjEFn3RHHIM+om6hMGJWcyFF81wIOrNYw+0Vctvzf0b4G/1IaNcl24pBvdpxF3X59DMDiPwtl9oib842lTY8btVmRWW89UAAtUmXR0UzAUh3y6ir2cnOwlHt1bvlX/Wzch6vXBKYfN4HiI3ita4HMtoM0Je/yUrqnnCQcs0sNVIfMB8NeAnTgNG+kAYJxwE7qlKIi8bgReEo8bVOfrAtYPn3Nadi0N0YPOKyeRFjp7jUeBgKz02APL+6mtfCf35Zxkety+7cChZrILF</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>'
+
+function Get-WoManifestCanonical([string]$Version, $ShaMap) {
+    $names = [string[]]@($ShaMap.PSObject.Properties | ForEach-Object Name)
+    [Array]::Sort($names, [StringComparer]::Ordinal)
+    return "version=$Version`n" + (($names | ForEach-Object { "$_=$($ShaMap.$_)" }) -join "`n")
+}
+
+# Gecerliyse $null, degilse hata metni dondurur
+function Test-WoManifest($Info) {
+    if (-not $Info.sha256 -or -not $Info.signature) { return "unsigned" }
+    try {
+        $rsa = New-Object Security.Cryptography.RSACryptoServiceProvider
+        $rsa.FromXmlString($WoUpdatePublicKey)
+        $data = [Text.Encoding]::UTF8.GetBytes((Get-WoManifestCanonical "$($Info.version)" $Info.sha256))
+        if ($rsa.VerifyData($data, "SHA256", [Convert]::FromBase64String("$($Info.signature)"))) { return $null }
+        return "badsig"
+    } catch { return "badsig" }
+}
+
+function Get-WoSignedFiles($Info) {
+    @(@("version.json") + @($Info.sha256.PSObject.Properties | ForEach-Object Name))
+}
+
 # Eski surumlerden kalan, artik kullanilmayan dosyalar
 $WoObsoleteFiles = @("modules/AdsBlocker.ps1", "modules/FeatureManager.ps1", "modules/BackgroundManager.ps1")
 
@@ -83,7 +110,7 @@ function Get-WoRemoteInfo {
 
 # Arka plan runspace'inde calisir. $Sync: Stage, Pct, File, Index, Count, Error
 $WoDownloadJob = {
-    param($BaseUrl, $Files, $Stage, $Sync)
+    param($BaseUrl, $Files, $Stage, $Sync, $Expected)
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         if (Test-Path $Stage) { Remove-Item $Stage -Recurse -Force }
@@ -111,8 +138,17 @@ $WoDownloadJob = {
             $i++; $Sync.Pct = [int](100 * $i / $n)
         }
 
-        # Dogrulama + PS 5.1 icin UTF-8 BOM
+        # Imzali ozetlerle karsilastir (indirilen ham baytlar; tek bayt farki bile reddedilir)
         $Sync.Stage = "verify"
+        $sha = [Security.Cryptography.SHA256]::Create()
+        foreach ($f in $Files) {
+            if ($f -eq "version.json") { continue }
+            $want = "$($Expected[$f])"
+            if (-not $want) { throw "Imzasiz dosya: $f" }
+            $got = ([BitConverter]::ToString($sha.ComputeHash([IO.File]::ReadAllBytes((Join-Path $Stage ($f -replace '/', '\'))))) -replace '-', '').ToLower()
+            if ($got -ne $want.ToLower()) { throw "SHA-256 uyusmuyor: $f" }
+        }
+        # PS 5.1 icin UTF-8 BOM
         $utf8Bom = New-Object Text.UTF8Encoding $true
         foreach ($f in $Files | Where-Object { $_ -match '\.(ps1|json)$' }) {
             $p = Join-Path $Stage ($f -replace '/', '\')

@@ -2,8 +2,7 @@
 #   Liste gorunumu (klasorler, oranlar) · agac haritasi · tiklanabilir yol · en buyuk dosyalar · dosya turu dagilimi
 # Tarayici FindFirstFileEx (LARGE_FETCH) kullanir; baglanti noktalarini (junction/symlink) izlemez.
 
-if (-not ("WoScan3" -as [type])) {
-    Add-Type -TypeDefinition @"
+Add-WoType "WoScan3" @"
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -92,7 +91,7 @@ public static class WoScan3 {
     public static Dictionary<string, long[]> ExtStats() { return ext; }
 }
 "@
-}
+
 
 Add-WoStrings @{
     NavAnalyzer = "Disk Analizi"; Title_Analyzer = "Disk Analizi"; Sub_Analyzer = "Diskinizde yer kaplayan klasörleri ve en büyük dosyaları bulun"
