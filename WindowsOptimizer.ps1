@@ -260,7 +260,14 @@ try {
             <Button x:Name="BtnWebsite"   Content="Website"   Style="{StaticResource LinkBtn}"/>
           </StackPanel>
         </Grid>
-      </Border>
+      </Border>	  
+    <!-- FOOTER LINKS -->
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+      <TextBlock x:Name="TxtAuthor" Foreground="#606080" FontSize="11" VerticalAlignment="Center" Margin="0,0,12,0"/>
+      <Button x:Name="BtnGithub"    Content="GitHub"    Foreground="#9C8CFF" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="0,0,12,0"/>
+      <Button x:Name="BtnInstagram" Content="Instagram" Foreground="#9C8CFF" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="0,0,12,0"/>
+      <Button x:Name="BtnWebsite"   Content="Website"   Foreground="#9C8CFF" Background="Transparent" BorderThickness="0" Cursor="Hand"/>
+    </StackPanel>	   
     </Grid>
   </Border>
 </Window>
@@ -347,6 +354,20 @@ try {
             $status.Foreground = "#F59E0B"
         }
     })
+	
+# Config linkleri
+$cfgPath = Join-Path $PSScriptRoot "config.json"
+if (Test-Path $cfgPath) {
+    $cfg = Get-Content $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    (N "TxtAuthor").Text = "by $($cfg.author)"
+    foreach ($pair in @(@("BtnGithub","github"), @("BtnInstagram","instagram"), @("BtnWebsite","website"))) {
+        $btn = N $pair[0]; $url = $cfg.($pair[1])
+        if ($url -and $url -ne "#") {
+            $u = $url
+            $btn.Add_Click({ Start-Process $u }.GetNewClosure())
+        } else { $btn.Visibility = "Collapsed" }
+    }
+}	
 
     $window.ShowDialog() | Out-Null
 }
