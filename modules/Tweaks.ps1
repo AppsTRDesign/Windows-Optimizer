@@ -222,25 +222,20 @@ $TweakCatalog = @(
        Reg=@( @{P="$POL\Windows\DeliveryOptimization"; N="DODownloadMode"; V=0; D=$null} ) }
 
     # ---------------- GİZLİLİK İZİNLERİ ----------------
-    @{ Id="PermLocation"; Cat="perm"; Rec=$false; Any=$true
+    @{ Id="PermLocation"; Cat="perm"; Rec=$false
        TR=@("Konum erişimi","Uygulamaların ve Windows'un konumunuza erişimi. Kapatılırsa hava durumu, saat dilimi ve Cihazımı Bul etkilenir.")
        EN=@("Location access","Apps and Windows can access your location. If turned off, weather, time zone and Find My Device are affected.")
-       Reg=@( @{P="$CAM\location"; N="Value"; V="Deny"; D="Allow"}
-              @{P="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"; N="Value"; V="Deny"; D="Allow"} ) }
+       Test={ Test-WoCapDenied "location" }; Apply={ Set-WoCap "location" $false }; Revert={ Set-WoCap "location" $true } }
 
-    @{ Id="PermMic"; Cat="perm"; Rec=$false; Any=$true
+    @{ Id="PermMic"; Cat="perm"; Rec=$false
        TR=@("Mikrofon erişimi","Uygulamaların mikrofona erişimi. Kapatılırsa Discord, Teams ve oyun içi sesli sohbet çalışmaz.")
        EN=@("Microphone access","Apps can use the microphone. If turned off, Discord, Teams and in-game voice chat stop working.")
-       Reg=@( @{P="$CAM\microphone"; N="Value"; V="Deny"; D="Allow"}
-              @{P="$CAM\microphone\NonPackaged"; N="Value"; V="Deny"; D="Allow"}
-              @{P="$CAMLM\microphone"; N="Value"; V="Deny"; D="Allow"} ) }
+       Test={ Test-WoCapDenied "microphone" }; Apply={ Set-WoCap "microphone" $false }; Revert={ Set-WoCap "microphone" $true } }
 
-    @{ Id="PermCamera"; Cat="perm"; Rec=$false; Any=$true
+    @{ Id="PermCamera"; Cat="perm"; Rec=$false
        TR=@("Kamera erişimi","Uygulamaların kameraya erişimi. Kapatılırsa görüntülü görüşme uygulamaları çalışmaz.")
        EN=@("Camera access","Apps can use the camera. If turned off, video call apps stop working.")
-       Reg=@( @{P="$CAM\webcam"; N="Value"; V="Deny"; D="Allow"}
-              @{P="$CAM\webcam\NonPackaged"; N="Value"; V="Deny"; D="Allow"}
-              @{P="$CAMLM\webcam"; N="Value"; V="Deny"; D="Allow"} ) }
+       Test={ Test-WoCapDenied "webcam" }; Apply={ Set-WoCap "webcam" $false }; Revert={ Set-WoCap "webcam" $true } }
 
     @{ Id="PermData"; Cat="perm"; Rec=$true
        TR=@("Kişisel verilere uygulama erişimi","Uygulamaların kişiler, takvim, arama geçmişi, e-posta, mesajlar, görevler, hesap bilgisi ve radyolara (Bluetooth) erişimi.")
@@ -609,6 +604,68 @@ function Test-WoRegEqual($A, $B) {
     $num = { param($x) $x -is [int] -or $x -is [uint32] -or $x -is [long] -or $x -is [int16] -or $x -is [byte] }
     if ((& $num $A) -and (& $num $B)) { return ([int64]$A -band 4294967295L) -eq ([int64]$B -band 4294967295L) }
     return "$A" -eq "$B"
+}
+
+# ---------------- Gizlilik izinleri (kamera, mikrofon, konum, ekran yakalama) ----------------
+# Windows 11 24H2+ izinleri kendi veritabaninda tutar; ConsentStore kayit defteri degerlerini dogrudan yazmak
+# Ayarlar'a yansimaz. CapAccess.ps1, Ayarlar uygulamasinin arabirimini AYRI BIR SURECTE cagirir (belgelenmemis
+# arabirim surecin cokmesine yol acabilir; ana uygulama etkilenmesin).
+$WoCapHelper = Join-Path $PSScriptRoot "CapAccess.ps1"
+if (-not $script:WoCapCache) { $script:WoCapCache = @{} }
+if ($null -eq $script:WoCapSync) { $script:WoCapSync = $false }   # arka plan islerinde $true: onbellek bossa yardimciyi bekle
+
+function Invoke-WoCapHelper([string[]]$HelperArgs) {
+    $psi = New-Object Diagnostics.ProcessStartInfo (Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe")
+    $psi.Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$WoCapHelper`" " + ($HelperArgs -join " ")
+    $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
+    $p = [Diagnostics.Process]::Start($psi)
+    $outT = $p.StandardOutput.ReadToEndAsync(); $errT = $p.StandardError.ReadToEndAsync()
+    if (-not $p.WaitForExit(20000)) { try { $p.Kill() } catch {}; throw "CapAccess: zaman asimi" }
+    $txt = $outT.Result
+    if (-not $txt) { throw "CapAccess: cikti yok (kod $($p.ExitCode)) $($errT.Result)" }
+    $j = $txt | ConvertFrom-Json
+    foreach ($pr in $j.caps.PSObject.Properties) {
+        $script:WoCapCache[$pr.Name] = @{ Device = $pr.Value.Device; User = $pr.Value.User; Desktop = $pr.Value.Desktop }
+    }
+    return $j
+}
+
+# Her duzey: "Allow" / "Deny" (grup ilkesiyle kilitliyse "Policy:" on eki). Arabirim yoksa kayit defterine duser.
+function Get-WoCapState([string]$Cap) {
+    if (-not $script:WoCapCache.ContainsKey($Cap) -and $script:WoCapSync) { try { [void](Invoke-WoCapHelper @("-Mode", "get")) } catch {} }
+    $c = $script:WoCapCache[$Cap]
+    $reg = { param($p) $v = Get-WoRegValue $p "Value"; if ($v) { "$v" } else { "Allow" } }
+    @{
+        Device  = $(if ($c -and $c.Device)  { $c.Device }  else { & $reg "$CAMLM\$Cap" })
+        User    = $(if ($c -and $c.User)    { $c.User }    else { & $reg "$CAM\$Cap" })
+        Desktop = $(if ($c -and $c.Desktop) { $c.Desktop } else { & $reg "$CAM\$Cap\NonPackaged" })
+    }
+}
+
+# Optimizasyon anahtari Windows'taki ana "... erisimi" anahtarini (cihaz duzeyi) yonetir
+function Test-WoCapDenied([string]$Cap) { (Get-WoCapState $Cap).Device -like "*Deny" }
+
+function Set-WoCap([string]$Cap, [bool]$Allow) {
+    $want = if ($Allow) { "Allow" } else { "Deny" }
+    $j = $null; $hErr = $null
+    try { $j = Invoke-WoCapHelper @("-Mode", "set", "-Cap", $Cap, "-Allow", [int]$Allow) } catch { $hErr = $_.Exception.Message }
+    if ($j -and $j.ok) {
+        $now = $null
+        for ($i = 0; $i -lt 3; $i++) {
+            try { [void](Invoke-WoCapHelper @("-Mode", "get")); $now = $script:WoCapCache[$Cap].Device } catch {}
+            if ($now -like "*$want") { return }
+            Start-Sleep -Milliseconds 400
+        }
+        if ($now -like "*$want") { return }
+        if ($now -like "Policy:*") { throw "Bu izin grup ilkesiyle kilitli" }
+        throw "Windows izni degistirmedi (okunan: $now)"
+    }
+    if ($j -and $j.error -notmatch "setting yok") { throw "Windows izni degistirmedi: $($j.error)" }
+    # Arabirim yok (eski Windows 10/11): kayit defteri hala gecerli yontem
+    Write-Verbose "CapAccess kullanilamadi ($hErr); kayit defterine yaziliyor"
+    Set-WoRegValue "$CAMLM\$Cap" "Value" $want
+    Set-WoRegValue "$CAM\$Cap" "Value" $want
+    $script:WoCapCache.Remove($Cap)
 }
 
 function Test-WoTweak($Tweak) {

@@ -1615,6 +1615,7 @@ try {
         (N "PageSub").Text   = T "Sub_$Name"
         $nb = N "Nav$Name"; if ($nb) { $nb.IsChecked = $true }
         if ($Name -in @("Tweaks", "Home") -and -not $script:Booting -and (Get-Command Refresh-TweaksLive -ErrorAction SilentlyContinue)) { Refresh-TweaksLive }
+        if ($Name -in @("Tweaks", "Privacy") -and -not $script:Booting -and (Get-Command Update-WoCapCache -ErrorAction SilentlyContinue)) { Update-WoCapCache }
         $def = $script:PageDefs[$Name]
         if ($def -and $def.OnShow) { try { & $def.OnShow } catch { Write-WoLog "Sayfa ($Name): $_" } }
         if ($Name -eq "Memory") { $window.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background, [Action]{ Draw-MemChart; Refresh-ProcList }) | Out-Null }
@@ -1795,6 +1796,7 @@ try {
         Start-Bg -Work {
             param($ModPath, $Apply, $Revert)
             . $ModPath
+            $script:WoCapCache = @{}; $script:WoCapSync = $true   # havuzdaki runspace yeniden kullanilabilir
             foreach ($id in $Apply) {
                 try { Invoke-WoTweak (Get-WoTweak $id); [pscustomobject]@{ Id = $id; Ok = $true; Rev = $false } }
                 catch { [pscustomobject]@{ Id = $id; Ok = $false; Rev = $false; Err = $_.Exception.Message } }
@@ -1803,10 +1805,13 @@ try {
                 try { Invoke-WoTweak (Get-WoTweak $id) -Revert; [pscustomobject]@{ Id = $id; Ok = $true; Rev = $true } }
                 catch { [pscustomobject]@{ Id = $id; Ok = $false; Rev = $true; Err = $_.Exception.Message } }
             }
+            if ($script:WoCapCache.Count) { [pscustomobject]@{ CapCache = $script:WoCapCache } }
         } -ArgList @((Join-Path $AppDir "modules\Tweaks.ps1"), $apply, $revert) -Done {
             param($out, $err)
             $script:Applying = $false
             (N "BtnQuickOptimize").IsEnabled = $true
+            foreach ($cc in @($out | Where-Object { $_.CapCache })) { foreach ($k in $cc.CapCache.Keys) { $script:WoCapCache[$k] = $cc.CapCache[$k] } }
+            $out = @($out | Where-Object { $_.Id })
             $ok = @($out | Where-Object { $_.Ok }).Count
             $fail = @($out | Where-Object { -not $_.Ok })
             foreach ($f in $fail) { Write-WoLog "Tweak hatasi ($($f.Id)): $($f.Err)" }
@@ -1893,6 +1898,29 @@ public static class WoRegWatch {
         }
         Update-TweakSummary
     }
+    # Gizlilik izinlerinin gercek durumu (Ayarlar arabirimi, ayri surec ~1 sn) - arka planda
+    $script:CapBusy = $false; $script:CapAgain = $false
+    function Update-WoCapCache {
+        if ($script:CapBusy) { $script:CapAgain = $true; return }
+        $script:CapBusy = $true
+        Start-Bg -Work {
+            param($ModPath)
+            . $ModPath
+            $script:WoCapCache = @{}
+            try { [void](Invoke-WoCapHelper @("-Mode", "get")); $script:WoCapCache } catch { "HATA: $($_.Exception.Message)" }
+        } -ArgList @((Join-Path $AppDir "modules\Tweaks.ps1")) -Done {
+            param($out, $err)
+            $script:CapBusy = $false
+            $res = @($out) | Select-Object -Last 1
+            if ($res -is [hashtable]) { foreach ($k in $res.Keys) { $script:WoCapCache[$k] = $res[$k] } }
+            elseif ($res -or $err) { Write-WoLog "Izin durumu okunamadi: $res $err" }
+            Refresh-TweaksLive
+            if ($script:Page -eq "Privacy" -and $script:PvData) { Build-Privacy }
+            if ($script:CapAgain) { $script:CapAgain = $false; Update-WoCapCache }
+        }
+    }
+    Update-WoCapCache
+
     $script:RegSeen = [WoRegWatch]::Version; $script:RegLastSync = Get-Date
     $regSync = New-Object Windows.Threading.DispatcherTimer
     $regSync.Interval = [TimeSpan]::FromMilliseconds(700)
@@ -1904,6 +1932,7 @@ public static class WoRegWatch {
         try {
             Refresh-TweaksLive
             if ($script:Page -eq "Privacy" -and (Get-Command Load-Privacy -ErrorAction SilentlyContinue)) { Load-Privacy }
+            Update-WoCapCache
         } catch { Write-WoLog "Canli senkron: $_" }
     })
     $regSync.Start()

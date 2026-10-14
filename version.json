@@ -1,7 +1,7 @@
 {
-    "version":  "3.2.0",
+    "version":  "3.2.1",
     "url":  "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1",
-    "notes":  "Akıllı Bellek sayfası (akıllı standby temizleyici, arka plan kısıtlayıcı + verimlilik modu, sızıntı dedektörü, sayfa dosyası danışmanı, tarayıcı bellek tasarrufu); imzalı ve SHA-256 doğrulamalı güncellemeler; daha hızlı açılış ve yükleme ekranı; gizlilik izinleri Windows Ayarları ile anlık senkron; MIT lisansı.",
+    "notes":  "Gizlilik izinleri (kamera, mikrofon, konum, ekran yakalama) artık Windows Ayarları\u0027nın kendi arabirimiyle değiştiriliyor ve okunuyor: Uygula dediğinizde Windows\u0027ta anında açılır/kapanır, Ayarlar\u0027da yaptığınız değişiklik programda anında görünür.",
     "files":  [
                   "version.json",
                   "WindowsOptimizer.ps1",
@@ -9,6 +9,7 @@
                   "LICENSE",
                   "assets/banner.png",
                   "assets/logo.png",
+                  "modules/CapAccess.ps1",
                   "modules/DiskCleaner.ps1",
                   "modules/Network.ps1",
                   "modules/RamCleaner.ps1",
@@ -27,18 +28,19 @@
                   "pages/SmartMem.ps1"
               ],
     "sha256":  {
-                   "WindowsOptimizer.ps1":  "24cf3ab2025552e5eeb2617ae4c7226e94547223f290ca337c51f677df67baa0",
+                   "WindowsOptimizer.ps1":  "e58e4328e5eb59a18e4a0a19e4ffacec915e5e58b9eb761bdc9a252aecc72c9d",
                    "config.json":  "83b3570acbe6fd65f065b05d39ba8a1db00bc1ca162af225220d59dd277b904e",
                    "LICENSE":  "d48204854366f6ea81b849cdddec1063c0fb472fb441b7ed5714b859c888570e",
                    "assets/banner.png":  "e0e78353913251f30439897cfb31eb21b9029fe1b2beaaa9ec02213b77459141",
                    "assets/logo.png":  "aff2959c311d4e9c9d2834e5c995daff6ded786b4e6501a2fef2f6df6821d80f",
+                   "modules/CapAccess.ps1":  "a8888481871c6d075781f6cc2b6c3b41fcd719c07fa0ee81ce532747e9619636",
                    "modules/DiskCleaner.ps1":  "8a9db436ce0b61b8c692c6e4c7d0ca5ba23d6223c7aa38aa2f37740271aa6e1a",
                    "modules/Network.ps1":  "d39c47392fde7ca73129e1af9b684587af7dd99352004f6b49f157a2e8fcdbd8",
                    "modules/RamCleaner.ps1":  "94679d08936ecc2109e5539b8c6242804ac14977107a838442cbe5cea3a77be7",
                    "modules/Services.ps1":  "1b2e2d42172b900eada69dbcadf22df1fe184da311b8fde78e2b1ff980d3116c",
                    "modules/Startup.ps1":  "ede71eea055eccf28647774c2c39c703933b6b297a35eab5c007912de4ec87f8",
-                   "modules/Tweaks.ps1":  "473878055724606dc2bbe7a66e685474158c49b9c032b447ed23e79ef458a2ac",
-                   "modules/Updater.ps1":  "7837a8e18afde107db05ba83a091d6e0cf8a5ecdfd55f75899bc1f879d17f900",
+                   "modules/Tweaks.ps1":  "18a32958d44736d0241b389eb7db0ba6758f6f4699e2c3f0e629a8a96afa1007",
+                   "modules/Updater.ps1":  "46c211b86ddf458a4669ec9cfef7daa768d0e41487514366218ab48ca50942e7",
                    "pages/Analyzer.ps1":  "b94b7cfa6c21464371ead383090db503cc875906b81a7cde496069250400b369",
                    "pages/Apps.ps1":  "119dbf762c3c9492f5f3955eac147af70b5e15bfc78f94f2284e1e7857487788",
                    "pages/Extras.ps1":  "515a2bda80abd451753105ba03156ee8913ab7a55010f9c99a0e5b7c628d72a3",
@@ -46,8 +48,8 @@
                    "pages/Health.ps1":  "e94f8d0a42972f35fc3a00e6aaa6eeb9f73bab89742c265bc49ade9ad13a1762",
                    "pages/Monitor.ps1":  "aa45ae4e2175b66c60a74002ba32aac228924d0274d6b4cbc399e8cc07cab11b",
                    "pages/Network.ps1":  "721c392e28ee9f9d2c48c7ed3c2f47a611339659b096d18e4902eb30dfcfa700",
-                   "pages/Privacy.ps1":  "f0389688732e22366af1fed9369cd26d6c3723256634fa8fa9192dad5d8358d6",
+                   "pages/Privacy.ps1":  "674b46069c15ccbc46e975abedb938751546615bbf07f54d6768e8c8ed149fff",
                    "pages/SmartMem.ps1":  "811a1487b85994133aca4d79bec7f0ded99ad9a992efae4601c6c053918923a1"
                },
-    "signature":  "YvPxJ8XqmmV+k7kld4RDdKj7pccX1CzdkaK4ICuvCjT3z+FEDBaGmrNonORoLRCmSM2A2wUcws6yn9j/x4DSJg7dGq7yTX+NkN0/LJwxm1HKyt8irWV1meXH8tNcVgj/ZpEVpeP+4MvjSBeGB2UhCSedTEvLNbwt1s2mnL+E6VOsBKIeKYPH7N/AJlsKUCNwC8gNcuyier/3vx5IGkMMQKZycAzkjfs0Gva7Bps9IFx3oAk8hFBPJKvr4I0yG6NycFQ/gQUYUHEDuBf+B6zzC+SEx+Fkwx1AbTbtwyjUYMJZATIs5hXZn2SWBB1IeHpTyCHYRK8T46JW7sOpog1t9Je+5Dd6EC9VstP2P46xH1Nn8AnexYNg5x1cmmy2nhrVUx06VimLKJT2aFeHOruNiN8bDOjeexQXhiCAKmuwwf0iH5qxbeImWLka8Wxw4qGW39o8oIm239PmXTPgFjXmAxbH4gbLo7jilB060UxgPB537YqMY6BlyK3Bfe/oPPOD"
+    "signature":  "NzG1wA6YqnJaMYBhUIAv5QJkvR7mdOZMotjP73NQ8U6dDX2BD66K8kY8cfaMWdjnkiCOPGdgUwZ51Gbk2SkU7fzIXGBGFUqRdcU+oAneqnH1CgFOVObSryHKdAJ4JHvFUr/rvPiT4YB1SEFP09wEUDgJ5jxZ+yySJy0Hz+GAW20sQpO40Q3QqM3vOD90M+2E6HO8rEqFEflKufG3TstDCoDr6/Moy56tY3Eg/7olO/FJAoM0nPgCH7YsWPty/iU/KjDsNxZJA7aDAOaCdBOi2Sn9OBeuhxOtiFWZUS/0KSSaqJWCny7QrOX94wM82hz5ZhykSBzZfLIzsqwPDA/0mBRceXkbu/ZTM8LBNXJoCix1r5OI7TummMtx9INS/hWajku+4LO8v+a1LcwNpwCdnvYzJelemlQPZH08YAiYYCtiK4iNhsDSSz8o0M6T0x105KTOOKyBNm2PlBJ8NFKA1YBsObFwep9pVz4AqKXaBt8VtBXVNkSzGu6fw707/Tfy"
 }

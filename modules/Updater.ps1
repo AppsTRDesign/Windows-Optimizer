@@ -8,7 +8,7 @@ $WoDefaultFiles = @(
     "assets/banner.png", "modules/Tweaks.ps1", "modules/RamCleaner.ps1", "modules/Updater.ps1",
     "modules/Startup.ps1", "modules/DiskCleaner.ps1", "modules/Services.ps1", "modules/Network.ps1",
     "pages/Game.ps1", "pages/Analyzer.ps1", "pages/Apps.ps1", "pages/Network.ps1",
-    "pages/Health.ps1", "pages/Privacy.ps1", "pages/Extras.ps1", "pages/Monitor.ps1", "pages/SmartMem.ps1"
+    "pages/Health.ps1", "pages/Privacy.ps1", "pages/Extras.ps1", "pages/Monitor.ps1", "pages/SmartMem.ps1", "modules/CapAccess.ps1"
 )
 # ---------------- IMZALI GUNCELLEME ----------------
 # version.json icindeki dosya ozetleri (sha256) proje sahibinin ozel anahtariyla imzalanir (tools\release.ps1).
@@ -76,6 +76,7 @@ function New-WoIcon([string]$InstallDir) {
 function New-WoShortcut([string]$InstallDir) {
     $ico = New-WoIcon $InstallDir
     $script = Join-Path $InstallDir "WindowsOptimizer.ps1"
+    $exe = Join-Path $InstallDir "WindowsOptimizer.exe"
     $targets = @(
         (Join-Path ([Environment]::GetFolderPath("Desktop")) "Windows Optimizer.lnk"),
         (Join-Path ([Environment]::GetFolderPath("Programs")) "Windows Optimizer.lnk")
@@ -85,14 +86,19 @@ function New-WoShortcut([string]$InstallDir) {
     foreach ($lnk in $targets) {
         try {
             $sc = $ws.CreateShortcut($lnk)
-            $sc.TargetPath       = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
-            $sc.Arguments        = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`""
+            if (Test-Path $exe) {
+                # EXE kurulumu: baslatici yonetici iznini kendi ister, konsol penceresi hic acilmaz
+                $sc.TargetPath = $exe; $sc.Arguments = ""; $sc.IconLocation = "$exe,0"
+            } else {
+                $sc.TargetPath  = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+                $sc.Arguments   = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`""
+                $sc.WindowStyle = 7
+                if ($ico) { $sc.IconLocation = "$ico,0" }
+            }
             $sc.WorkingDirectory = $InstallDir
-            $sc.WindowStyle      = 7
             $sc.Description      = "Windows Optimizer"
-            if ($ico) { $sc.IconLocation = "$ico,0" }
             $sc.Save()
-            Set-WoLnkRunAsAdmin $lnk
+            if (-not (Test-Path $exe)) { Set-WoLnkRunAsAdmin $lnk }
             $made += $lnk
         } catch {}
     }

@@ -121,16 +121,16 @@ function Build-Privacy {
         $ic = New-Tb ([string][char]$PvIcons[$cap]) 14 $PvColors[$cap]; $ic.FontFamily = $iconFont; $ic.HorizontalAlignment = "Center"; $ic.VerticalAlignment = "Center"; $ib.Child = $ic
         $t = New-Tb (T "PvCap_$cap") 13.5 "#EDEDF5"; $t.FontWeight = [Windows.FontWeights]::SemiBold; $t.VerticalAlignment = "Center"; $t.Margin = New-Object Windows.Thickness(10, 0, 0, 0)
         [void]$h.Children.Add($ib); [void]$h.Children.Add($t); [void]$sp.Children.Add($h)
-        $st = $d.Status[$cap]; if (-not $st) { $st = @{ Device = "Allow"; User = "Allow"; Desktop = "Allow" } }
-        $blocked = ($st.Device -eq "Deny") -or ($st.User -eq "Deny" -and $st.Desktop -eq "Deny")
-        $partial = (-not $blocked) -and (($st.User -eq "Deny") -or ($st.Desktop -eq "Deny"))
+        $st = Get-WoCapState $cap
+        $blocked = ($st.Device -like "*Deny") -or ($st.User -like "*Deny" -and $st.Desktop -like "*Deny")
+        $partial = (-not $blocked) -and (($st.User -like "*Deny") -or ($st.Desktop -like "*Deny"))
         $allowed = -not $blocked
         $badgeRow = New-Object Windows.Controls.WrapPanel; $badgeRow.Margin = New-Object Windows.Thickness(-8, 10, 0, 0)
         [void]$badgeRow.Children.Add($(if ($blocked) { New-Badge (T "PvDenied") "#12302A" "#6EE7B7" } elseif ($partial) { New-Badge (T "PvPartial") "#3A2E10" "#FCD34D" } else { New-Badge (T "PvAllowed") "#1E2A44" "#7DD3FC" }))
         if ($active.Count) { [void]$badgeRow.Children.Add((New-Badge ("● " + (T "PvInUse")) "#3A1520" "#FCA5A5")) }
         [void]$sp.Children.Add($badgeRow)
         $sub = if ($ev.Count -eq 0) { T "PvNever" } else { (T "PvApps7") -f $recent.Count }
-        $lvl = { param($v) if ($v -eq "Deny") { T "PvOff" } else { T "PvOn" } }
+        $lvl = { param($v) if ($v -like "*Deny") { T "PvOff" } else { T "PvOn" } }
         $lv = New-Tb ((T "PvLevels") -f (& $lvl $st.Device), (& $lvl $st.User), (& $lvl $st.Desktop)) 10.5 "#6A6A86"
         $lv.Margin = New-Object Windows.Thickness(0, 8, 0, 0); $lv.TextWrapping = "Wrap"; [void]$sp.Children.Add($lv)
         $sb = New-Tb $sub 11.5 "#9C9CB8"; $sb.Margin = New-Object Windows.Thickness(0, 6, 0, 10); [void]$sp.Children.Add($sb)

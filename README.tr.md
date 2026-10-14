@@ -54,7 +54,15 @@ RAMMap / MemReduct ile aynı Windows API'lerini kullanır; harici bir araç indi
 
 > Windows boş RAM'i önbellek (standby) olarak kullanır ve bu normaldir. Temizlik en çok bir oyun veya ağır bir uygulama açmadan önce, ya da bellek sıkıştığında işe yarar.
 
-## 🚀 Tek tıkla kurulum
+## 🚀 Kurulum
+
+### 1. Yol: Kurulum dosyası (EXE)
+
+[Releases](https://github.com/AppsTRDesign/Windows-Optimizer/releases/latest) sayfasından **WindowsOptimizer-Setup.exe** dosyasını indirip çalıştırın. Kurulum sırasında internet gerekmez. Masaüstü ve Başlat menüsü kısayollarını oluşturur, **Ayarlar → Uygulamalar** listesine kaldırma kaydı ekler. **Portable** zip de vardır: istediğiniz yere çıkarıp `WindowsOptimizer.exe` ile çalıştırın.
+
+> EXE kod imzalı olmadığı için SmartScreen "Windows bilgisayarınızı korudu" uyarısı gösterebilir. **Ek bilgi → Yine de çalıştır** deyin. Her sürüm dosyasının SHA-256 özeti sürüm sayfasındaki `SHA256SUMS.txt` dosyasındadır.
+
+### 2. Yol: Tek satır PowerShell kurulumu
 
 **PowerShell**'i açın ve şu komutu çalıştırın:
 
@@ -81,6 +89,8 @@ Her sürüm **imzalıdır**: `version.json` her dosyanın SHA-256 özetini ve bu
 Bir sorun çıkarsa mevcut kurulumunuz değiştirilmez. Güncelleme günlüğü `%TEMP%\WindowsOptimizer-update.log` dosyasına yazılır.
 
 ## 🗑️ Kaldırma
+
+EXE ile kurduysanız: **Ayarlar → Uygulamalar → Windows Optimizer → Kaldır**. Aksi halde:
 
 ```powershell
 Remove-Item "$env:USERPROFILE\Windows-Optimizer" -Recurse -Force -ErrorAction SilentlyContinue
@@ -116,6 +126,8 @@ pages/                       # Bağımsız sayfalar (kendi arayüzü + mantığ�
     └── Extras.ps1           # Profil, sistem tepsisi, zamanlanmış bakım
 tools/
     ├── release.ps1          # Sürümü imzalar: dosya başına SHA-256 + RSA imzası -> version.json
+    ├── build-exe.ps1        # İmzalı sürümden kurulum EXE'si + portable zip üretir (yerleşik C# derleyicisi)
+    ├── exe/                 # Başlatıcı, kurulum/kaldırma kaynak kodları ve manifest dosyaları
     └── public-key.xml       # Açık anahtar (özel anahtar asla depoda değildir)
 ```
 

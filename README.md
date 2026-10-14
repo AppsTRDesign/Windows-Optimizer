@@ -54,7 +54,15 @@ Uses the same Windows APIs as RAMMap / MemReduct; no external tools are download
 
 > Windows uses free RAM as cache (standby), which is normal. Cleaning is most useful before launching a game or heavy app, or when memory is tight.
 
-## 🚀 One-click install
+## 🚀 Install
+
+### Option 1 — Setup (EXE)
+
+Download **WindowsOptimizer-Setup.exe** from [Releases](https://github.com/AppsTRDesign/Windows-Optimizer/releases/latest) and run it. No internet connection is needed during setup. It creates Desktop and Start menu shortcuts and adds an entry to **Settings → Apps** for uninstalling. A **Portable** zip is also available: extract it anywhere and run `WindowsOptimizer.exe`.
+
+> The EXE is not code-signed, so SmartScreen may show "Windows protected your PC". Click **More info → Run anyway**. The SHA-256 of every release file is listed in `SHA256SUMS.txt` on the release page.
+
+### Option 2 — One-line PowerShell install
 
 Open **PowerShell** and run:
 
@@ -81,6 +89,8 @@ Every release is **signed**: `version.json` lists the SHA-256 hash of every file
 If anything fails, your current installation is left untouched. The update log is written to `%TEMP%\WindowsOptimizer-update.log`.
 
 ## 🗑️ Uninstall
+
+If you installed with the EXE: **Settings → Apps → Windows Optimizer → Uninstall**. Otherwise:
 
 ```powershell
 Remove-Item "$env:USERPROFILE\Windows-Optimizer" -Recurse -Force -ErrorAction SilentlyContinue
@@ -116,6 +126,8 @@ pages/                       # Self-contained pages (own UI + logic)
     └── Extras.ps1           # Profiles, system tray, scheduled maintenance
 tools/
     ├── release.ps1          # Signs a release: SHA-256 per file + RSA signature -> version.json
+    ├── build-exe.ps1        # Builds Setup EXE + portable zip from the signed release (built-in C# compiler)
+    ├── exe/                 # Launcher, setup/uninstaller sources and manifests
     └── public-key.xml       # Public key (the private key is never in the repo)
 ```
 

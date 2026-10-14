@@ -39,6 +39,11 @@ Katkılarınızı memnuniyetle karşılıyoruz! Hata bildirimi, öneri ve kod ka
 ```
 Betik dosya listesini, her dosyanın SHA-256 özetini ve dijital imzayı `version.json`'a yazar. İmzasız veya özeti tutmayan güncellemeler istemciler tarafından reddedilir.
 
+EXE paketleri (isteğe bağlı) imzalı sürümden üretilir ve GitHub → Releases'e eklenir (depoya değil):
+```powershell
+.\tools\build-exe.ps1   # dist\WindowsOptimizer-Setup-<sürüm>.exe, Portable.zip, SHA256SUMS.txt
+```
+
 ---
 
 ## English
