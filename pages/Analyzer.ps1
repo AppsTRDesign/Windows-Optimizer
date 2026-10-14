@@ -99,6 +99,7 @@ Add-WoStrings @{
     AnDrive = "Disk"; BtnAnScan = "Tara"; BtnAnCancel = "Durdur"; AnScanning = "Taranıyor: {0:N0} klasör, {1:N0} dosya"
     AnIdle = "Disk seçin ve Tara'ya basın"; AnIdleTip = "Tarama diskin boyutuna göre 10 saniye ile birkaç dakika arası sürer; istediğiniz an durdurabilirsiniz."
     AnDone = "{0} tarandı: {1} · {2:N0} dosya · {3:N1} sn"; AnUp = "Yukarı"; BtnAnUp = "Yukarı"
+    AnDelta = "Taramadan beri diskte {0} {1} · güncel liste için yeniden tarayın"; AnDeltaFreed = "boşaldı"; AnDeltaUsed = "doldu"
     AnViewList = "Liste"; AnViewMap = "Harita"; AnFolderInfo = "{0}  ·  {1:N0} dosya  ·  {2:N0} klasör  ·  sürücünün %{3:N1}'i"
     AnEmptyTitle = "Henüz tarama yapılmadı"; AnEmptyMsg = "Yukarıdan bir disk seçip Tara'ya basın. Klasörler boyutlarına göre sıralanır; bir klasöre tıklayarak içine inebilirsiniz."
     AnFiles = "Bu klasördeki dosyalar"; AnOther = "Diğer {0} öğe"; AnOpen = "Gezgin'de aç"; AnFilesN = "{0:N0} dosya"; AnDirsN = "{0:N0} klasör"
@@ -111,6 +112,7 @@ Add-WoStrings @{
     AnDrive = "Drive"; BtnAnScan = "Scan"; BtnAnCancel = "Stop"; AnScanning = "Scanning: {0:N0} folders, {1:N0} files"
     AnIdle = "Pick a drive and press Scan"; AnIdleTip = "Takes 10 seconds to a few minutes depending on drive size; you can stop it anytime."
     AnDone = "{0} scanned: {1} · {2:N0} files · {3:N1} s"; AnUp = "Up"; BtnAnUp = "Up"
+    AnDelta = "Since the scan, {0} {1} on the drive · rescan for an up-to-date list"; AnDeltaFreed = "freed"; AnDeltaUsed = "used"
     AnViewList = "List"; AnViewMap = "Map"; AnFolderInfo = "{0}  ·  {1:N0} files  ·  {2:N0} folders  ·  {3:N1}% of drive"
     AnEmptyTitle = "No scan yet"; AnEmptyMsg = "Pick a drive above and press Scan. Folders are sorted by size; click a folder to drill in."
     AnFiles = "Files in this folder"; AnOther = "{0} more items"; AnOpen = "Open in Explorer"; AnFilesN = "{0:N0} files"; AnDirsN = "{0:N0} folders"
@@ -149,6 +151,7 @@ Register-WoPage @{
             <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
               <WrapPanel x:Name="AnCrumbs"/>
               <TextBlock x:Name="AnFolderInfo" FontSize="11.5" Foreground="{DynamicResource Muted}" Margin="2,5,0,0" TextTrimming="CharacterEllipsis"/>
+              <TextBlock x:Name="AnDeltaText" FontSize="11.5" Margin="2,3,0,0" TextTrimming="CharacterEllipsis" Visibility="Collapsed"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
               <Button x:Name="BtnAnUp" Style="{DynamicResource SecondaryBtn}" Height="30" FontSize="12" Margin="0,0,10,0" IsEnabled="False"/>
@@ -240,6 +243,8 @@ function Start-AnScan {
     $script:AnBusy = $true; $script:AnStarted = Get-Date
     $drv = @(Get-WoDrives | Where-Object Letter -eq $script:AnDrive) | Select-Object -First 1
     $script:AnDriveTotal = if ($drv) { [double]$drv.Total } else { 0 }
+    $script:AnUsedAtScan = if ($drv) { [double]($drv.Total - $drv.Free) } else { 0 }
+    $script:AnScanLetter = $script:AnDrive
     Build-AnDrives
     Start-Bg -Work {
         param($R)
@@ -526,3 +531,20 @@ $anTimer.Add_Tick({
     }
 })
 $anTimer.Start()
+
+# Taramadan sonra diskte bosalan/dolan alani canli goster (silinen dosyalar aninda yansir)
+$anLive = New-Object Windows.Threading.DispatcherTimer
+$anLive.Interval = [TimeSpan]::FromSeconds(3)
+$anLive.Add_Tick({
+    if ($script:Page -ne "Analyzer" -or $script:AnBusy -or -not $script:AnRoot -or -not $window.IsVisible) { return }
+    try {
+        $d = New-Object IO.DriveInfo($script:AnScanLetter)
+        $delta = ([double]($d.TotalSize - $d.AvailableFreeSpace)) - $script:AnUsedAtScan
+        $info = N "AnDeltaText"
+        if ([Math]::Abs($delta) -lt 1MB) { $info.Visibility = "Collapsed"; return }
+        $info.Visibility = "Visible"
+        $info.Text = (T "AnDelta") -f (Fmt-Size ([Math]::Abs($delta))), $(if ($delta -lt 0) { T "AnDeltaFreed" } else { T "AnDeltaUsed" })
+        $info.Foreground = Brush $(if ($delta -lt 0) { "#34D399" } else { "#FBBF24" })
+    } catch {}
+})
+$anLive.Start()

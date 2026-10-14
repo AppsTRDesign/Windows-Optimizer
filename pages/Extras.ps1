@@ -287,7 +287,7 @@ if ($null -eq $Settings["trayNotify"]) { $Settings["trayNotify"] = $true }
 (N "TrayChkClose").IsChecked = [bool]$Settings["trayClose"]
 (N "TrayChkNotify").IsChecked = [bool]$Settings["trayNotify"]
 (N "TrayChkStart").IsChecked = Test-WoTrayTask
-if ($Settings["trayClose"] -or $Tray) { New-WoTrayIcon }
+if (($Settings["trayClose"] -or $Tray) -and -not $Snapshot) { New-WoTrayIcon }
 
 (N "TrayChkClose").Add_Click({
     $Settings["trayClose"] = [bool](N "TrayChkClose").IsChecked; Save-WoSettings

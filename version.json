@@ -1,7 +1,7 @@
 {
-  "version": "3.0.2",
+  "version": "3.1.0",
   "url": "https://raw.githubusercontent.com/AppsTRDesign/Windows-Optimizer/main/install.ps1",
-  "notes": "Düzeltmeler: Kaldırılan uygulamalar listesi (eksik/boş kayıtlar onarıldı, yeniden yüklenenler işaretlenir), Disk Analizi başlığında yazı taşması, tarayıcı servisleri koruması.",
+  "notes": "Yeni: Performans izleme (CPU/GPU/RAM/disk/ağ canlı) ve tek tıkla optimizasyon, disk hatası onarma (CHKDSK), DISM hızlı denetim ve ISO ile onarım, NVMe sağlık verileri, anlık disk temizleme. Düzeltmeler: IP yenileme, Disk Analizi.",
   "files": [
     "WindowsOptimizer.ps1",
     "config.json",
@@ -21,6 +21,7 @@
     "pages/Network.ps1",
     "pages/Health.ps1",
     "pages/Privacy.ps1",
-    "pages/Extras.ps1"
+    "pages/Extras.ps1",
+    "pages/Monitor.ps1"
   ]
 }

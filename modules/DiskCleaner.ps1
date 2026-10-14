@@ -51,6 +51,37 @@ public static class WoDisk {
 "@
 }
 
+# Anlik algilama: kategori klasorlerini izler; olaylar C# icinde toplanir (PowerShell betigi baska is parcaciginda calistirilmaz)
+if (-not ("WoWatch" -as [type])) {
+    Add-Type -TypeDefinition @"
+using System;
+using System.IO;
+using System.Collections.Generic;
+public static class WoWatch {
+    static readonly List<FileSystemWatcher> ws = new List<FileSystemWatcher>();
+    static readonly HashSet<string> dirty = new HashSet<string>();
+    static readonly object gate = new object();
+    public static int Count { get { return ws.Count; } }
+    public static void Add(string id, string path, string filter) {
+        try {
+            if (!Directory.Exists(path)) return;
+            FileSystemWatcher w = new FileSystemWatcher(path, string.IsNullOrEmpty(filter) ? "*" : filter);
+            w.IncludeSubdirectories = true; w.InternalBufferSize = 65536;
+            w.NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size;
+            FileSystemEventHandler h = delegate { lock (gate) { dirty.Add(id); } };
+            w.Created += h; w.Deleted += h; w.Changed += h;
+            w.Renamed += delegate { lock (gate) { dirty.Add(id); } };
+            w.Error += delegate { lock (gate) { dirty.Add(id); } };
+            w.EnableRaisingEvents = true;
+            ws.Add(w);
+        } catch { }
+    }
+    public static string[] Take() { lock (gate) { string[] a = new string[dirty.Count]; dirty.CopyTo(a); dirty.Clear(); return a; } }
+    public static void Clear() { foreach (FileSystemWatcher w in ws) { try { w.EnableRaisingEvents = false; w.Dispose(); } catch { } } ws.Clear(); }
+}
+"@
+}
+
 $L = $env:LOCALAPPDATA
 $W = $env:SystemRoot
 # Her kategori: Paths (P=yol, joker karakter destekli; F=dosya deseni; A=en az yas saat; R=alt klasorler)
@@ -123,8 +154,8 @@ function Resolve-WoCleanPaths($Cat) {
     }
 }
 
-function Get-WoDiskScan {
-    foreach ($c in $DiskCategories) {
+function Get-WoDiskScan([string[]]$Ids) {
+    foreach ($c in ($DiskCategories | Where-Object { -not $Ids -or $_.Id -in $Ids })) {
         $bytes = 0L; $files = 0L
         foreach ($p in (Resolve-WoCleanPaths $c)) {
             $r = [WoDisk]::Scan($p.P, $p.F, $p.A, $p.R)
@@ -158,6 +189,13 @@ function Invoke-WoDiskClean([string[]]$Ids) {
             foreach ($s in $stopped) { Start-Service -Name $s -ErrorAction SilentlyContinue }
         }
         [pscustomobject]@{ Id = $c.Id; Freed = $freed; Deleted = $deleted; Failed = $failed }
+    }
+}
+
+function Start-WoDiskWatch {
+    [WoWatch]::Clear()
+    foreach ($c in $DiskCategories) {
+        foreach ($p in (Resolve-WoCleanPaths $c)) { [WoWatch]::Add($c.Id, $p.P, $(if ($p.F -and $p.F -ne "*" -and -not $p.R) { $p.F } else { "*" })) }
     }
 }
 

@@ -20,7 +20,8 @@ if (-not $isAdmin -and -not $Snapshot) {
 }
 
 $AppDir       = $PSScriptRoot
-$LogPath      = Join-Path $env:TEMP "WindowsOptimizer.log"
+# Test/goruntu modu ayri gunluk kullanir; gercek uygulamanin gunlugune karismaz
+$LogPath      = Join-Path $env:TEMP $(if ($Snapshot) { "WindowsOptimizer-snapshot.log" } else { "WindowsOptimizer.log" })
 $SettingsPath = Join-Path $AppDir "settings.json"
 
 function Write-WoLog([string]$Msg) {
@@ -1430,7 +1431,7 @@ try {
     }
 
     # ---------------- ARKA PLAN İŞLERİ ----------------
-    $script:Pool = [runspacefactory]::CreateRunspacePool(1, 4)
+    $script:Pool = [runspacefactory]::CreateRunspacePool(1, 8)
     $script:Pool.Open()
     $script:Jobs = New-Object System.Collections.ArrayList
 
@@ -1460,7 +1461,7 @@ try {
     $NavIcons = @{ Home = 0xE80F; Tweaks = 0xE945; Memory = 0xE9D9; Startup = 0xE7E8; Services = 0xE90F; Disk = 0xEDA2; Settings = 0xE713 }
     $NavGroups = [ordered]@{
         main   = @("Home", "Tweaks")
-        perf   = @("Memory", "Game", "Startup", "Services")
+        perf   = @("Monitor", "Memory", "Game", "Startup", "Services")
         clean  = @("Disk", "Analyzer", "Apps")
         system = @("Network", "Health", "Privacy", "Settings")
     }
@@ -1503,7 +1504,6 @@ try {
     }
     $script:Page = "Home"
     function Show-Page([string]$Name) {
-        if ($Snapshot) { Write-WoLog ("SHOWPAGE $Name <- " + ((Get-PSCallStack | Select-Object -Skip 1 -First 4 | ForEach-Object { "$($_.Command):$($_.ScriptLineNumber)" }) -join " < ")) }
         $script:Page = $Name
         foreach ($k in $Pages.Keys) { (N $Pages[$k]).Visibility = if ($k -eq $Name) { "Visible" } else { "Collapsed" } }
         (N "PageTitle").Text = T "Title_$Name"
@@ -2896,28 +2896,58 @@ try {
         return $bytes
     }
 
-    function Start-DiskScan {
+    # $Ids verilirse yalnizca o kategoriler sessizce yeniden taranir (canli guncelleme); liste bosaltilmaz
+    $script:DiskLastScan = @{}
+    function Start-DiskScan([string[]]$Ids) {
         if ($script:DiskBusy) { return }
         $script:DiskBusy = $true
-        $script:DiskScan = @{}
-        (N "BtnDiskScan").IsEnabled = $false
-        (N "DcSub").Text = T "DcScanning"
-        Build-CleanList
+        $quiet = [bool]$Ids
+        if (-not $quiet) {
+            $script:DiskScan = @{}
+            (N "BtnDiskScan").IsEnabled = $false
+            (N "DcSub").Text = T "DcScanning"
+            Build-CleanList
+        }
+        foreach ($c in $DiskCategories) { if (-not $Ids -or $c.Id -in $Ids) { $script:DiskLastScan[$c.Id] = Get-Date } }
         Start-Bg -Work {
-            param($Mod)
+            param($Mod, $Ids)
             . $Mod
-            Get-WoDiskScan
-        } -ArgList @((Join-Path $AppDir "modules\DiskCleaner.ps1")) -Done {
+            Get-WoDiskScan $Ids
+        } -ArgList @((Join-Path $AppDir "modules\DiskCleaner.ps1"), $Ids) -Done {
             param($out, $err)
+            $first = -not $script:DiskScanned
             $script:DiskBusy = $false; $script:DiskScanned = $true
             (N "BtnDiskScan").IsEnabled = $true
             (N "DcSub").Text = T "DcSub"
             if ($err) { Write-WoLog "Disk taramasi: $err" }
             foreach ($r in @($out)) { if ($r.Id) { $script:DiskScan[$r.Id] = $r } }
             Build-CleanList
-            if ($script:Page -eq "Disk") { [void]$window.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::ContextIdle, [Action]{ (N "PageDisk").ScrollToTop() }) }
+            if ([WoWatch]::Count -eq 0) { Start-WoDiskWatch }
+            if ($first -and $script:Page -eq "Disk") { [void]$window.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::ContextIdle, [Action]{ (N "PageDisk").ScrollToTop() }) }
         }
     }
+
+    # Canli: degisen kategori hemen (sik degisenler en fazla 10 sn'de bir) yeniden taranir; disk kartlari 5 sn'de bir
+    $script:DiskDirty = @{}
+    $diskLive = New-Object Windows.Threading.DispatcherTimer
+    $diskLive.Interval = [TimeSpan]::FromSeconds(1)
+    $script:DiskLiveTick = 0
+    $diskLive.Add_Tick({
+        try {
+            foreach ($id in [WoWatch]::Take()) { $script:DiskDirty[$id] = $true }
+            if ($script:Page -ne "Disk" -or -not $window.IsVisible -or -not $script:DiskScanned) { return }
+            $script:DiskLiveTick++
+            if ($script:DiskLiveTick % 5 -eq 0) { Show-Drives }
+            if ($script:DiskBusy -or $script:DiskDirty.Count -eq 0) { return }
+            $now = Get-Date
+            $ids = @($script:DiskDirty.Keys | Where-Object {
+                $gap = if ($_ -in @("Browser", "UserTemp", "Thumbs", "Shader")) { 10 } else { 1 }
+                -not $script:DiskLastScan[$_] -or ($now - $script:DiskLastScan[$_]).TotalSeconds -ge $gap
+            })
+            if ($ids.Count) { foreach ($i in $ids) { $script:DiskDirty.Remove($i) }; Start-DiskScan $ids }
+        } catch { Write-WoLog "Canli disk: $_" }
+    })
+    $diskLive.Start()
 
     function Start-DiskClean {
         if ($script:DiskBusy) { return }
@@ -2956,7 +2986,7 @@ try {
     (N "BtnCleanMgr").Add_Click({ Start-Process cleanmgr.exe })
 
     # ================= EK SAYFALAR (pages\*.ps1) =================
-    foreach ($pf in @("Game", "Analyzer", "Apps", "Network", "Health", "Privacy", "Extras")) {
+    foreach ($pf in @("Health", "Monitor", "Game", "Analyzer", "Apps", "Network", "Privacy", "Extras")) {
         $pp = Join-Path $AppDir "pages\$pf.ps1"
         if (Test-Path $pp) { try { . $pp } catch { Write-WoLog "Sayfa yuklenemedi ($pf): $_" } }
     }
@@ -3054,6 +3084,9 @@ try {
 
     # Gelistirici: -Snapshot <klasor> her sayfanin PNG goruntusunu alir ve cikar
     if ($Snapshot) {
+        # Test penceresi ekran disinda ve tiklanamaz: kullanicinin masaustunde yanlislikla islem yapilamasin
+        $window.WindowStartupLocation = "Manual"; $window.Left = -20000; $window.Top = 0
+        $window.ShowInTaskbar = $false; $window.ShowActivated = $false; $window.Content.IsHitTestVisible = $false
         New-Item -ItemType Directory -Path $Snapshot -Force | Out-Null
         $script:Remote = [pscustomobject]@{ version = "2.1.0"; notes = "Örnek sürüm notu: yeni modüller ve hata düzeltmeleri, uzun metin taşmadan sarılır." }
         Show-UpdateCard

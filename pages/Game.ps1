@@ -89,7 +89,7 @@ $WoGameApps = [ordered]@{
     "EpicGamesLauncher" = "Epic Games Launcher"; "EADesktop" = "EA app"; "Battle.net" = "Battle.net"; "UbisoftConnect" = "Ubisoft Connect"
     "steamwebhelper" = "Steam (web helper)"; "WhatsApp" = "WhatsApp"; "Telegram" = "Telegram"; "Copilot" = "Copilot"
 }
-$WoGameDefaultApps = @("OneDrive", "msedge", "Widgets", "WidgetService", "PhoneExperienceHost", "mscopilot", "Copilot", "Creative Cloud", "AdobeIPCBroker", "Dropbox", "GoogleDriveFS")
+$WoGameDefaultApps = @("OneDrive", "Widgets", "WidgetService", "PhoneExperienceHost", "mscopilot", "Copilot", "Creative Cloud", "AdobeIPCBroker", "Dropbox", "GoogleDriveFS")
 
 # Ayarlar (settings.json -> game)
 $g = $Settings["game"]

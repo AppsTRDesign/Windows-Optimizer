@@ -11,6 +11,10 @@ $CAM   = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManage
 $MMCSS = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"
 $WoPlanGuid = "57a1c0de-0000-4000-8000-0000000000aa"   # Uygulamanin olusturdugu Nihai Performans kopyasi
 
+# Bazi ilkeler yalnizca belirli surum/edisyonda etkilidir; etkisiz olanlar listelenmez
+$WoEdition = "$((Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -ErrorAction SilentlyContinue).EditionID)"
+$WoBuild = [int]"0$((Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -ErrorAction SilentlyContinue).CurrentBuild)"
+
 $TweakCategories = [ordered]@{
     ads    = @{ Icon = [char]0xE72E; TR = "Reklamlar & Öneriler";  EN = "Ads & Suggestions" }
     perm   = @{ Icon = [char]0xE8D7; TR = "Gizlilik İzinleri";     EN = "Privacy Permissions" }
@@ -115,8 +119,8 @@ $TweakCatalog = @(
               @{P="$POL\Edge"; N="HubsSidebarEnabled"; V=0; D=$null} ) }
 
     @{ Id="Copilot"; Cat="search"; Rec=$true; Restart="explorer"
-       TR=@("Windows Copilot'u kapat","Görev çubuğundaki Copilot düğmesini ve kısayolunu kaldırır.")
-       EN=@("Disable Windows Copilot","Removes the Copilot taskbar button and shortcut.")
+       TR=@("Windows Copilot düğmesini ve kısayolunu kapat","Görev çubuğu düğmesini ve Win+C kısayolunu kapatır. Yeni Copilot uygulamasını Uygulamalar sayfasından kaldırabilirsiniz.")
+       EN=@("Disable Windows Copilot button and shortcut","Turns off the taskbar button and Win+C. Remove the new Copilot app from the Apps page.")
        Reg=@( @{P="HKCU:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot"; N="TurnOffWindowsCopilot"; V=1; D=$null}
               @{P=$ADV; N="ShowCopilotButton"; V=0; D=$null} ) }
 
@@ -134,13 +138,13 @@ $TweakCatalog = @(
               @{P="$POL\Windows\DataCollection"; N="DoNotShowFeedbackNotifications"; V=1; D=$null} )
        Svc=@( @{N="DiagTrack"; D="Automatic"}, @{N="dmwappushservice"; D="Manual"} ) }
 
-    @{ Id="Cortana"; Cat="system"; Rec=$true
+    @{ Id="Cortana"; Cat="system"; Rec=$true; Avail={ $WoBuild -lt 26100 }
        TR=@("Cortana'yı devre dışı bırak","Cortana'yı ve kilit ekranındaki erişimini kapatır.")
        EN=@("Disable Cortana","Turns off Cortana including above the lock screen.")
        Reg=@( @{P="$POL\Windows\Windows Search"; N="AllowCortana"; V=0; D=$null}
               @{P="$POL\Windows\Windows Search"; N="AllowCortanaAboveLock"; V=0; D=$null} ) }
 
-    @{ Id="Consumer"; Cat="system"; Rec=$true
+    @{ Id="Consumer"; Cat="system"; Rec=$true; Avail={ $WoEdition -match 'Enterprise|Education' }
        TR=@("Tüketici özelliklerini kapat","Otomatik yüklenen sponsorlu uygulamaları (Candy Crush vb.) engeller.")
        EN=@("Disable consumer features","Blocks auto-installed sponsored apps (Candy Crush etc.).")
        Reg=@( @{P="$POL\Windows\CloudContent"; N="DisableWindowsConsumerFeatures"; V=1; D=$null}
@@ -343,7 +347,7 @@ $TweakCatalog = @(
        Reg=@( @{P="$WUP\AU"; N="AUOptions"; V=2; D=$null}
               @{P="$WUP\AU"; N="NoAutoUpdate"; V=0; D=$null} ) }
 
-    @{ Id="WUDeferFeature"; Cat="update"; Rec=$false
+    @{ Id="WUDeferFeature"; Cat="update"; Rec=$false; Avail={ $WoEdition -notmatch '^Core' }
        TR=@("Büyük sürüm güncellemelerini 1 yıl ertele","24H2 gibi yıllık özellik güncellemeleri 365 gün ertelenir; güvenlik güncellemeleri gelmeye devam eder (Pro/Enterprise).")
        EN=@("Defer feature updates for 1 year","Yearly feature updates like 24H2 are deferred 365 days; security updates still arrive (Pro/Enterprise).")
        Reg=@( @{P=$WUP; N="DeferFeatureUpdates"; V=1; D=$null}
@@ -360,6 +364,8 @@ $TweakCatalog = @(
        Reg=@( @{P="HKCU:\System\GameConfigStore"; N="GameDVR_Enabled"; V=0; D=1}
               @{P="$POL\Windows\GameDVR"; N="AllowGameDVR"; V=0; D=$null} ) }
 )
+
+$TweakCatalog = @($TweakCatalog | Where-Object { -not $_.Avail -or [bool](& $_.Avail) })
 
 # ---------------- DEGISIKLIK GUNLUGU ----------------
 # Bir deger ilk kez degistirilmeden once orijinali kaydedilir; "Sifirla" bunlari birebir geri yazar.

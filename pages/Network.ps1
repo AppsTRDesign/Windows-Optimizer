@@ -14,7 +14,9 @@ Add-WoStrings @{
     DnsD_opendns = "Cisco tarafından işletilir, oltalama koruması"; DnsD_cffamily = "Zararlı yazılım ve yetişkin içeriği engeller"
     NwToolsTitle = "Onarım Araçları"
     NwFlushT = "DNS önbelleğini temizle"; NwFlushD = "Açılmayan siteler veya eski adres sorunları için"; NwFlushed = "DNS önbelleği temizlendi"
-    NwRenewT = "IP adresini yenile"; NwRenewD = "Modemden yeni adres alır; bağlantı birkaç saniye kesilir"; NwRenewing = "IP adresi yenileniyor…"; NwRenewed = "IP adresi yenilendi"
+    NwRenewT = "IP adresini yenile"; NwRenewD = "Modemden yeni adres alır; bağlantı birkaç saniye kesilir"; NwRenewing = "IP adresi yenileniyor… (bağlantı birkaç saniye kesilecek)"; NwRenewed = "IP adresi yenilendi"
+    NwRenewSame = "Kira yenilendi: {0} — modem aynı adresi yeniden verdi (bu normaldir; DHCP cihazınıza aynı IP'yi ayırır)"
+    NwRenewNew = "IP adresi değişti: {0} → {1}"; NwRenewFail = "IP yenilenemedi: {0}"
     NwResetT = "Ağ ayarlarını sıfırla"; NwResetD = "Winsock ve TCP/IP yığınını sıfırlar; yeniden başlatma gerekir"
     NwResetTitle = "Ağ ayarları sıfırlansın mı?"; NwResetMsg = "Winsock kataloğu ve TCP/IP ayarları varsayılana döner. VPN ve proxy ayarlarının yeniden yapılması gerekebilir. İşlem sonrası bilgisayarı yeniden başlatmanız gerekir."
     NwResetOk = "Sıfırla"; NwResetDone = "Ağ ayarları sıfırlandı — bilgisayarı yeniden başlatın"
@@ -33,7 +35,9 @@ Add-WoStrings @{
     DnsD_opendns = "Run by Cisco, phishing protection"; DnsD_cffamily = "Blocks malware and adult content"
     NwToolsTitle = "Repair Tools"
     NwFlushT = "Flush DNS cache"; NwFlushD = "For sites that won't open or stale addresses"; NwFlushed = "DNS cache flushed"
-    NwRenewT = "Renew IP address"; NwRenewD = "Gets a new address from the router; connection drops for a few seconds"; NwRenewing = "Renewing IP address…"; NwRenewed = "IP address renewed"
+    NwRenewT = "Renew IP address"; NwRenewD = "Gets a new address from the router; connection drops for a few seconds"; NwRenewing = "Renewing IP address… (connection drops for a few seconds)"; NwRenewed = "IP address renewed"
+    NwRenewSame = "Lease renewed: {0} — the router handed out the same address again (normal; DHCP reserves the same IP for your device)"
+    NwRenewNew = "IP address changed: {0} → {1}"; NwRenewFail = "Could not renew IP: {0}"
     NwResetT = "Reset network settings"; NwResetD = "Resets Winsock and the TCP/IP stack; restart required"
     NwResetTitle = "Reset network settings?"; NwResetMsg = "The Winsock catalog and TCP/IP settings return to defaults. VPN and proxy settings may need to be set up again. You will need to restart the PC afterwards."
     NwResetOk = "Reset"; NwResetDone = "Network settings reset — restart the PC"
@@ -243,10 +247,35 @@ function Set-DnsUi([string]$Provider) {
     if ($script:NetBusy) { return }
     $script:NetBusy = $true
     Set-Status (T "NwRenewing") "busy"
-    Start-Bg -Work { & ipconfig.exe /release | Out-Null; & ipconfig.exe /renew | Out-Null } -Done {
+    Start-Bg -Work {
+        param($Mod)
+        . $Mod
+        $res = @()
+        foreach ($a in @(Get-WoNetAdapters)) {
+            $before = $a.IPv4
+            $dhcp = (Get-NetIPInterface -InterfaceIndex $a.Index -AddressFamily IPv4 -ErrorAction SilentlyContinue).Dhcp
+            if ("$dhcp" -ne "Enabled") { $res += [pscustomobject]@{ Name = $a.Name; Before = $before; After = $before; Err = "Statik IP (DHCP kapalı)" }; continue }
+            $o1 = & ipconfig.exe /release "$($a.Name)" 2>&1
+            $o2 = & ipconfig.exe /renew "$($a.Name)" 2>&1
+            $code = $LASTEXITCODE
+            Start-Sleep -Seconds 2
+            $after = @((Get-NetIPAddress -InterfaceIndex $a.Index -AddressFamily IPv4 -ErrorAction SilentlyContinue) | Where-Object { $_.IPAddress -notlike "169.254*" } | ForEach-Object IPAddress) -join ", "
+            $err = if ($code -ne 0 -or -not $after) { (($o2 | Out-String).Trim() -split "`r?`n" | Where-Object { $_ -match '\S' } | Select-Object -Last 1) } else { $null }
+            $res += [pscustomobject]@{ Name = $a.Name; Before = $before; After = $after; Err = $err }
+        }
+        $res
+    } -ArgList @($NetMods[0]) -Done {
         param($out, $err)
         $script:NetBusy = $false
-        Set-Status (T "NwRenewed") "ok"
+        $r = @($out | Where-Object Name)
+        $bad = @($r | Where-Object Err)
+        if ($err -or $r.Count -eq 0) { Set-Status ((T "NwRenewFail") -f "$err") "err" }
+        elseif ($bad.Count) { Set-Status ((T "NwRenewFail") -f ($bad | ForEach-Object { "$($_.Name): $($_.Err)" }) -join "; ") "err" }
+        else {
+            $changed = @($r | Where-Object { $_.Before -ne $_.After })
+            if ($changed.Count) { Set-Status ((T "NwRenewNew") -f $changed[0].Before, $changed[0].After) "ok" }
+            else { Set-Status ((T "NwRenewSame") -f (($r | ForEach-Object After) -join ", ")) "ok" }
+        }
         Load-Network $false
     }
 })

@@ -15,6 +15,7 @@ A modular, open-source performance & privacy tool for Windows 10/11. It disables
 | 🏠 **Overview** | Live CPU / RAM / disk usage with sparklines, system info, optimization score and quick actions |
 | ⚡ **Optimizations** | 49 tweaks in 7 categories (including Windows Update control). Each setting's **current state is read from the system**; turning it off restores the Windows default |
 | 🧠 **Memory (RAM)** | Live 2-minute stacked graph (in use / modified / standby), one-click cleaning, before/after results, top memory consumers, auto-clean by usage threshold |
+| 📈 **Performance** | Live CPU (per core), GPU, memory, disk throughput and network; one-click memory, temp files, DNS and power plan optimization |
 | 🎮 **Game Mode** | One click: RAM cleanup, temporary Ultimate Performance plan, silenced notifications and closing selected background apps; everything is restored afterwards |
 | 🚀 **Startup** | Every program that runs at boot (registry, Startup folder, scheduled tasks) with icon, publisher and command line; toggle with one click. Compatible with Task Manager |
 | 🔧 **Services** | Scans all Windows services and separates Windows components, third-party and unnecessary ones. Explains every suggestion, applies the safe ones in one click, every change can be undone |
@@ -22,7 +23,7 @@ A modular, open-source performance & privacy tool for Windows 10/11. It disables
 | 🗺️ **Disk Analyzer** | Treemap of folders by size (click to drill in) and the 50 largest files |
 | 📦 **Apps** | Remove unnecessary preinstalled apps (News, Clipchamp, Solitaire, Teams…); critical packages are never listed, removed apps can be reinstalled from the Store |
 | 🌐 **Network** | Adapter details, DNS speed test with real queries and one-click DNS switching (Cloudflare, Google, Quad9, AdGuard…), DNS flush / IP renew / network reset |
-| 🩺 **Health** | Disk SMART info (temperature, SSD wear, power-on hours), 30-day stability summary, SFC and DISM repair with live progress |
+| 🩺 **Health** | Disk SMART info (temperature, SSD wear, power-on hours), 30-day stability summary, SFC and DISM repair with live progress (incl. quick check and ISO repair), disk error repair (CHKDSK) |
 | 🔍 **Privacy Report** | Which app accessed the camera, microphone, location and screen capture, and when; live indicator while in use |
 | ↩️ **Reset** | The original value of every setting is recorded before its first change; return to the original state or to Windows defaults in one click |
 | ⚙️ **Settings** | Profile export/import, system tray and start with Windows, weekly scheduled maintenance, language (TR/EN), update check, shortcut repair, system restore point, log file |
